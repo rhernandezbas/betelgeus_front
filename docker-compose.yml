@@ -11,8 +11,7 @@ services:
     restart: unless-stopped
     networks:
       - betelgeuse-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - splynx-tickets_app-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
@@ -35,3 +34,5 @@ services:
 networks:
   betelgeuse-network:
     driver: bridge
+  splynx-tickets_app-network:
+    external: true
