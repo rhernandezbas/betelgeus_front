@@ -14,9 +14,8 @@ RUN npm install --production=false --legacy-peer-deps
 COPY vite.config.js ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
-COPY index.html ./
 
-# Copiar código fuente
+# Copiar código fuente (incluye index.html dentro de frontend/)
 COPY frontend ./frontend
 
 # Configurar variable de entorno para usar rutas relativas
