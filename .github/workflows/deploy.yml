@@ -83,22 +83,37 @@ jobs:
 
             # Construir y levantar con los nuevos cambios
             echo "🏗️  Construyendo nueva imagen..."
-            docker compose build --no-cache --pull
+            if ! docker compose build --no-cache --pull; then
+              echo "❌ Error en el build"
+              docker compose logs
+              exit 1
+            fi
 
             echo "🚀 Iniciando contenedores..."
-            docker compose up -d
+            if ! docker compose up -d; then
+              echo "❌ Error al iniciar contenedores"
+              docker compose logs
+              exit 1
+            fi
 
             # Esperar a que el contenedor esté listo
             echo "⏳ Esperando que el servicio esté listo..."
-            sleep 15
+            sleep 20
 
-            # Mostrar estado
+            # Mostrar estado detallado
             echo "📊 Estado de contenedores:"
-            docker compose ps
+            docker compose ps -a
+
+            # Mostrar logs completos si hay error
+            if ! docker compose ps | grep -q "Up"; then
+              echo "❌ Los contenedores no están corriendo. Logs completos:"
+              docker compose logs
+              exit 1
+            fi
 
             # Mostrar logs recientes
             echo "📋 Últimos logs:"
-            docker compose logs --tail=30
+            docker compose logs --tail=50
 
             echo "✅ Despliegue completado exitosamente"
 
@@ -113,20 +128,34 @@ jobs:
             cd /opt/betelgeuse
 
             # Verificar que los contenedores están corriendo
+            echo "📊 Estado detallado de contenedores:"
+            docker compose ps -a
+
             if docker compose ps | grep -q "Up"; then
               echo "✅ Contenedores corriendo correctamente"
-              echo ""
-              echo "📊 Estado de servicios:"
-              docker compose ps
               echo ""
               echo "🌐 Frontend disponible en: http://190.7.234.37:7842"
               echo ""
               echo "📋 Logs del frontend:"
-              docker compose logs --tail=10 frontend
+              docker compose logs --tail=20 frontend
+
+              # Test de conectividad
+              echo ""
+              echo "🔍 Probando conectividad..."
+              if curl -f http://localhost:7842 > /dev/null 2>&1; then
+                echo "✅ Frontend responde correctamente"
+              else
+                echo "⚠️  Frontend no responde aún"
+              fi
               exit 0
             else
               echo "❌ Error: Contenedores no están corriendo"
-              docker compose logs --tail=50
+              echo ""
+              echo "📋 Logs completos:"
+              docker compose logs
+              echo ""
+              echo "🔍 Inspeccionando contenedor:"
+              docker compose ps -a
               exit 1
             fi
 
