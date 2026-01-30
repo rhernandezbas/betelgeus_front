@@ -1,6 +1,6 @@
 # Betelgeuse - Splynx Admin Panel
 
-Panel de administración web para gestión de operadores de tickets Splynx, construido con React, Vite, TailwindCSS y shadcn/ui.
+Panel de administración web para gestión de operadores de tickets Splynx ipnext, construido con React, Vite, TailwindCSS y shadcn/ui.
 
 ## 🚀 Inicio Rápido
 
