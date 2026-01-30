@@ -11,7 +11,7 @@ COPY package*.json ./
 RUN npm install --production=false
 
 # Copiar código fuente
-COPY . .
+COPY frontend .
 
 # Configurar variable de entorno para usar rutas relativas
 ENV VITE_API_URL=""

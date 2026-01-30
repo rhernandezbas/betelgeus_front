@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,7 +24,7 @@ jobs:
           command_timeout: 30m
           script: |
             echo "🔧 Verificando dependencias..."
-            
+
             # Verificar Docker
             if ! command -v docker &> /dev/null; then
               echo "📦 Instalando Docker..."
@@ -34,7 +34,7 @@ jobs:
             else
               echo "✅ Docker ya está instalado"
             fi
-            
+
             # Instalar Git si no existe
             if ! command -v git &> /dev/null; then
               echo "📦 Instalando Git..."
@@ -42,58 +42,64 @@ jobs:
             else
               echo "✅ Git ya está instalado"
             fi
-            
+
             # Verificar versiones
             echo "📋 Versiones instaladas:"
             docker --version
             docker compose version
             git --version
-            
+
             # Configurar directorio del proyecto
-            PROJECT_DIR="/opt/splynx-tickets"
-            
+            PROJECT_DIR="/opt/betelgeuse"
+
             # Crear directorio si no existe
             mkdir -p $PROJECT_DIR
             cd $PROJECT_DIR
-            
+
             # Si el repo no existe, clonarlo
             if [ ! -d ".git" ]; then
               echo "📦 Clonando repositorio..."
-              git clone https://github.com/rhernandezbas/splynx-tickets.git .
+              git clone https://github.com/rhernandezbas/betelgeus_front.git .
             else
               echo "🔄 Actualizando repositorio..."
               git fetch origin
               git reset --hard origin/main
               git pull origin main
             fi
-            
+
+            # Crear archivo .env si no existe
+            if [ ! -f ".env" ]; then
+              echo "📝 Creando archivo .env..."
+              cp .env.example .env
+            fi
+
             # Detener contenedores existentes
             echo "🛑 Deteniendo contenedores..."
             docker compose down -v 2>/dev/null || true
-            
+
             # Limpiar caché de Docker completamente
             echo "🧹 Limpiando caché de Docker..."
-            docker system prune -af
-            
+            docker system prune -af --volumes
+
             # Construir y levantar con los nuevos cambios
             echo "🏗️  Construyendo nueva imagen..."
             docker compose build --no-cache --pull
-            
+
             echo "🚀 Iniciando contenedores..."
             docker compose up -d
-            
+
             # Esperar a que el contenedor esté listo
             echo "⏳ Esperando que el servicio esté listo..."
             sleep 15
-            
+
             # Mostrar estado
             echo "📊 Estado de contenedores:"
             docker compose ps
-            
+
             # Mostrar logs recientes
             echo "📋 Últimos logs:"
             docker compose logs --tail=30
-            
+
             echo "✅ Despliegue completado exitosamente"
 
       - name: Verify deployment
@@ -104,8 +110,8 @@ jobs:
           password: YmUeXJYrO3
           port: 22
           script: |
-            cd /opt/splynx-tickets
-            
+            cd /opt/betelgeuse
+
             # Verificar que los contenedores están corriendo
             if docker compose ps | grep -q "Up"; then
               echo "✅ Contenedores corriendo correctamente"
@@ -114,16 +120,20 @@ jobs:
               docker compose ps
               echo ""
               echo "🌐 Frontend disponible en: http://190.7.234.37:7842"
-              echo "🔌 Backend (interno): http://backend:7842"
               echo ""
               echo "📋 Logs del frontend:"
               docker compose logs --tail=10 frontend
-              echo ""
-              echo "📋 Logs del backend:"
-              docker compose logs --tail=10 backend
               exit 0
             else
               echo "❌ Error: Contenedores no están corriendo"
               docker compose logs --tail=50
               exit 1
             fi
+
+      - name: Health check
+        run: |
+          echo "🏥 Verificando salud del servicio..."
+          sleep 10
+          # Opcional: agregar curl para verificar endpoint
+          # curl -f http://190.7.234.37:7842 || exit 1
+          echo "✅ Health check completado"

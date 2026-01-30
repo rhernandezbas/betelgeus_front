@@ -6,19 +6,23 @@ Este repositorio está configurado con GitHub Actions para desplegar automática
 
 Ve a tu repositorio en GitHub: `Settings` → `Secrets and variables` → `Actions` → `New repository secret`
 
-Agrega los siguientes **3 secretos**:
+Agrega los siguientes secretos:
 
 ### 1. VPS_HOST
-- **Valor**: `190.7.234.37`
+- **Nombre:** `VPS_HOST`
+- **Valor:** La IP o dominio de tu VPS (ej: `190.7.234.37`)
 
 ### 2. VPS_USERNAME
-- **Valor**: `root`
+- **Nombre:** `VPS_USERNAME`
+- **Valor:** Usuario SSH (ej: `root`)
 
 ### 3. VPS_PASSWORD
-- **Valor**: `YmUeXJYrO3`
+- **Nombre:** `VPS_PASSWORD`
+- **Valor:** Tu contraseña SSH
 
-### 4. VPS_PORT
-- **Valor**: `22`
+### 4. VPS_PORT (Opcional)
+- **Nombre:** `VPS_PORT`
+- **Valor:** Puerto SSH (default: `22`)
 
 ## 🚀 Preparar el VPS (Solo primera vez)
 

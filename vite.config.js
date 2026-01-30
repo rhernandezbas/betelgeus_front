@@ -4,9 +4,10 @@ import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
   plugins: [react()],
+  root: './frontend',
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@': fileURLToPath(new URL('./frontend/src', import.meta.url)),
     },
   },
   server: {
@@ -17,5 +18,9 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    outDir: '../dist',
+    emptyOutDir: true,
   },
 })
