@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Betelgeuse** is a Splynx Admin Panel - a React-based web application for managing ticket assignment operators, schedules, and system configuration. The frontend communicates with a backend API (not in this repo) for operator management, ticket auditing, device analysis, and system metrics.
 
 **Key Characteristics:**
-- Frontend-only repository (backend is separate)
+-si aparefe Frontend-only repository (backend is separate)
 - Admin and operator role-based access
 - Real-time system monitoring and control
 - Multi-page SPA with protected routes
