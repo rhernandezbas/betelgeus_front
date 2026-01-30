@@ -8,10 +8,16 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm install --production=false
+RUN npm install --production=false --legacy-peer-deps
+
+# Copiar archivos de configuración
+COPY vite.config.js ./
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
+COPY index.html ./
 
 # Copiar código fuente
-COPY frontend .
+COPY frontend ./frontend
 
 # Configurar variable de entorno para usar rutas relativas
 ENV VITE_API_URL=""
