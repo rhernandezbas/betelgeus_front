@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { RefreshCw, Calendar, TrendingUp, Clock, AlertCircle, CheckCircle, Filter, Download, Search, Edit2, Trash2, AlertTriangle } from 'lucide-react'
@@ -19,6 +20,12 @@ export default function Metrics() {
     priority: 'all'
   })
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
+  const [thresholdModal, setThresholdModal] = useState({
+    open: false,
+    ticketId: null,
+    currentStatus: false,
+    ticketInfo: null
+  })
   const { toast } = useToast()
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
@@ -98,26 +105,33 @@ export default function Metrics() {
     }
   }
 
-  const handleToggleThreshold = async (ticketId, currentStatus) => {
+  const handleToggleThreshold = (ticketId, currentStatus, ticketInfo = null) => {
+    // Abrir modal de confirmación
+    setThresholdModal({
+      open: true,
+      ticketId,
+      currentStatus,
+      ticketInfo
+    })
+  }
+
+  const confirmToggleThreshold = async () => {
+    const { ticketId, currentStatus } = thresholdModal
     const newStatus = !currentStatus
-    const message = newStatus 
-      ? '¿Marcar este ticket como VENCIDO? Se creará la métrica si no existe.'
-      : '¿Desmarcar este ticket como vencido?'
-    
-    if (!confirm(message)) {
-      return
-    }
-    
+
+    // Cerrar modal
+    setThresholdModal({ open: false, ticketId: null, currentStatus: false, ticketInfo: null })
+
     try {
-      await adminApi.updateTicketThreshold(ticketId, { 
-        exceeded_threshold: newStatus 
+      await adminApi.updateTicketThreshold(ticketId, {
+        exceeded_threshold: newStatus
       })
-      
+
       toast({
         title: 'Actualizado',
         description: `Ticket ${newStatus ? 'marcado como vencido' : 'desmarcado como vencido'}`,
       })
-      
+
       // Recargar datos
       await fetchTickets()
       await fetchMetrics()
@@ -864,7 +878,7 @@ export default function Metrics() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleToggleThreshold(ticket.ticket_id, ticket.exceeded_threshold)}
+                            onClick={() => handleToggleThreshold(ticket.ticket_id, ticket.exceeded_threshold, ticket)}
                             className="h-7 px-2"
                             title={ticket.exceeded_threshold ? 'Marcar como NO vencido' : 'Marcar como vencido'}
                           >
@@ -908,6 +922,88 @@ export default function Metrics() {
           <p>• Puedes exportar los datos filtrados a CSV para análisis externo</p>
         </CardContent>
       </Card>
+
+      {/* Modal de Confirmación para Marcar/Desmarcar Vencido */}
+      <Dialog open={thresholdModal.open} onOpenChange={(open) => !open && setThresholdModal({ open: false, ticketId: null, currentStatus: false, ticketInfo: null })}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {thresholdModal.currentStatus ? (
+                <>
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>Desmarcar Ticket como Vencido</span>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                  <span>Marcar Ticket como Vencido</span>
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription className="pt-4 space-y-3">
+              {thresholdModal.ticketInfo && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-700">Ticket:</span>
+                    <span className="text-gray-900">#{thresholdModal.ticketInfo.ticket_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-700">Cliente:</span>
+                    <span className="text-gray-900">{thresholdModal.ticketInfo.cliente}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-700">Operador:</span>
+                    <span className="text-gray-900">{thresholdModal.ticketInfo.operator_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-medium text-gray-700">Estado:</span>
+                    <span className="text-gray-900">{thresholdModal.ticketInfo.estado}</span>
+                  </div>
+                </div>
+              )}
+
+              {thresholdModal.currentStatus ? (
+                <div className="text-sm text-gray-600">
+                  <p className="font-medium text-gray-800 mb-2">¿Estás seguro que deseas desmarcar este ticket como vencido?</p>
+                  <p>Al confirmar, el indicador de <span className="font-semibold text-green-700">"Excede tiempo"</span> se establecerá en <span className="font-semibold text-green-700">NO</span> y el ticket dejará de aparecer en el filtro de vencidos.</p>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600">
+                  <p className="font-medium text-gray-800 mb-2">¿Estás seguro que deseas marcar este ticket como vencido?</p>
+                  <p>Al confirmar, el indicador de <span className="font-semibold text-yellow-700">"Excede tiempo"</span> se establecerá en <span className="font-semibold text-yellow-700">SÍ</span> y se creará la métrica correspondiente si no existe.</p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setThresholdModal({ open: false, ticketId: null, currentStatus: false, ticketInfo: null })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant={thresholdModal.currentStatus ? "default" : "destructive"}
+              onClick={confirmToggleThreshold}
+              className={thresholdModal.currentStatus ? "bg-green-600 hover:bg-green-700" : ""}
+            >
+              {thresholdModal.currentStatus ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Sí, Desmarcar
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Sí, Marcar como Vencido
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
