@@ -2,9 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
-  Clock,
   Settings,
-  FileText,
   MessageSquare,
   Menu,
   X,
@@ -34,10 +32,9 @@ const navigation = [
   { name: 'Métricas', href: '/metrics', icon: BarChart3 },
   { name: 'Usuarios', href: '/users', icon: UserCog },
   { name: 'Configuración', href: '/configuration', icon: Settings },
-  { name: 'Auditoría', href: '/audit', icon: FileText },
+  { name: 'Logs & Auditoría', href: '/logs', icon: ScrollText },
   { name: 'Auditoría de Tickets', href: '/audit-tickets', icon: FileSearch },
   { name: 'Historial de Reasignaciones', href: '/reassignment-history', icon: ArrowRightLeft },
-  { name: 'Logs del Sistema', href: '/logs', icon: ScrollText },
 ]
 
 export default function Layout() {

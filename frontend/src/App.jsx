@@ -4,13 +4,12 @@ import OperatorLayout from './components/OperatorLayout'
 import Dashboard from './pages/Dashboard'
 import OperatorsManagement from './pages/OperatorsManagement'
 import Configuration from './pages/Configuration'
-import AuditLogs from './pages/AuditLogs'
+import UnifiedLogs from './pages/UnifiedLogs'
 import ReassignmentHistory from './pages/ReassignmentHistory'
 import AuditTickets from './pages/AuditTickets'
 import Messages from './pages/Messages'
 import Metrics from './pages/Metrics'
 import Users from './pages/Users'
-import LogsViewer from './pages/LogsViewer'
 import OperatorView from './pages/OperatorView'
 import DeviceAnalysis from './pages/DeviceAnalysis'
 import Login from './pages/Login'
@@ -40,9 +39,8 @@ function App() {
           <Route path="configuration" element={<Configuration />} />
           <Route path="messages" element={<Messages />} />
           <Route path="metrics" element={<Metrics />} />
-          <Route path="logs" element={<LogsViewer />} />
+          <Route path="logs" element={<UnifiedLogs />} />
           <Route path="users" element={<Users />} />
-          <Route path="audit" element={<AuditLogs />} />
           <Route path="audit-tickets" element={<AuditTickets />} />
           <Route path="reassignment-history" element={<ReassignmentHistory />} />
           <Route path="device-analysis" element={
