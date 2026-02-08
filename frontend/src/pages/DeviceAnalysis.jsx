@@ -250,7 +250,7 @@ export default function DeviceAnalysis() {
     setLogsLoading(true)
     try {
       const response = await analyzer.getLogs(logsFilters)
-      setLogs(response.data.logs || [])
+      setLogs(response.logs || [])
     } catch (error) {
       console.error('Error fetching logs:', error)
       toast({
@@ -267,7 +267,7 @@ export default function DeviceAnalysis() {
     setLogsLoading(true)
     try {
       const response = await analyzer.getRecentLogs(50)
-      setLogs(response.data.logs || [])
+      setLogs(response.logs || [])
     } catch (error) {
       console.error('Error fetching recent logs:', error)
       toast({
@@ -289,7 +289,7 @@ export default function DeviceAnalysis() {
     setLogsLoading(true)
     try {
       const response = await analyzer.searchLogs(logsSearchQuery, logsFilters)
-      setLogs(response.data.logs || [])
+      setLogs(response.logs || [])
     } catch (error) {
       console.error('Error searching logs:', error)
       toast({
@@ -325,7 +325,7 @@ export default function DeviceAnalysis() {
     setFeedbackLoading(true)
     try {
       const response = await analyzer.getFeedbackList()
-      setFeedbackList(response.data.feedback || [])
+      setFeedbackList(response.feedback || [])
     } catch (error) {
       console.error('Error fetching feedback list:', error)
       toast({
