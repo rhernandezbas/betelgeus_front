@@ -12,6 +12,7 @@ import Metrics from './pages/Metrics'
 import Users from './pages/Users'
 import OperatorView from './pages/OperatorView'
 import DeviceAnalysis from './pages/DeviceAnalysis'
+import NOCDashboard from './pages/NOCDashboard'
 import Login from './pages/Login'
 import { ProtectedRoute, PublicRoute } from './components/ProtectedRoute'
 import { PermissionRoute } from './components/PermissionRoute'
@@ -48,6 +49,7 @@ function App() {
               <DeviceAnalysis />
             </PermissionRoute>
           } />
+          <Route path="noc-dashboard" element={<NOCDashboard />} />
         </Route>
 
         {/* Rutas protegidas para operadores */}
