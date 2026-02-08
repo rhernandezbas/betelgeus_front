@@ -282,12 +282,18 @@ export default function Metrics() {
     if (filters.status === 'Abierto') {
       const countBefore = filtered.length
       console.log('🔍 [DEBUG] Aplicando filtro Abierto (is_closed=false && exceeded_threshold=false)')
+
+      // Mostrar valores de los primeros 5 tickets para diagnosticar
+      if (filtered.length > 0) {
+        console.log('🔍 [DEBUG] Valores de primeros 3 tickets:')
+        filtered.slice(0, 3).forEach(t => {
+          console.log(`  - Ticket #${t.ticket_id}: is_closed=${t.is_closed} (tipo: ${typeof t.is_closed}), exceeded_threshold=${t.exceeded_threshold} (tipo: ${typeof t.exceeded_threshold}), estado="${t.estado}"`)
+        })
+      }
+
       // Abierto: no cerrado y no vencido
       filtered = filtered.filter(t => {
         const passes = t.is_closed === false && t.exceeded_threshold === false
-        if (!passes && countBefore <= 10) {
-          console.log(`🔍 [DEBUG] Ticket ${t.ticket_id} rechazado: is_closed=${t.is_closed}, exceeded_threshold=${t.exceeded_threshold}`)
-        }
         return passes
       })
       console.log(`🔍 [DEBUG] Después de filtro Abierto: ${countBefore} → ${filtered.length}`)
