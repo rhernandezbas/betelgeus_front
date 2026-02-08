@@ -44,7 +44,12 @@ export default function Metrics() {
       // Obtener tickets desde la base de datos
       const response = await adminApi.getIncidents()
       const incidents = response.data.incidents || []
-      
+
+      console.log('📊 [DEBUG] Tickets recibidos del backend:', incidents.length)
+      if (incidents.length > 0) {
+        console.log('📊 [DEBUG] Primer ticket del backend:', incidents[0])
+      }
+
       // Transformar los datos al formato esperado
       const transformedTickets = incidents.map(incident => ({
         id: incident.id,
@@ -52,16 +57,26 @@ export default function Metrics() {
         cliente: incident.customer_name || 'N/A',
         asunto: incident.subject || 'Sin asunto',
         estado: incident.status_name || 'Desconocido',
-        is_closed: incident.is_closed || false,
+        is_closed: incident.is_closed ?? false,  // Usar nullish coalescing
         prioridad: incident.priority_name || 'Media',
         assigned_to: incident.assigned_to,
         operator_name: incident.operator_name || 'Sin asignar',
         created_at: incident.created_at,
         response_time: incident.response_time_minutes,
-        exceeded_threshold: incident.exceeded_threshold || false,
+        exceeded_threshold: incident.exceeded_threshold ?? false,  // Usar nullish coalescing
         recreado: incident.recreado || 0  // Agregar campo recreado
       }))
-      
+
+      console.log('📊 [DEBUG] Tickets transformados:', transformedTickets.length)
+      if (transformedTickets.length > 0) {
+        console.log('📊 [DEBUG] Primer ticket transformado:', transformedTickets[0])
+        console.log('📊 [DEBUG] Distribución de estados:', {
+          cerrados: transformedTickets.filter(t => t.is_closed === true).length,
+          abiertos: transformedTickets.filter(t => t.is_closed === false && t.exceeded_threshold === false).length,
+          vencidos: transformedTickets.filter(t => t.is_closed === false && t.exceeded_threshold === true).length
+        })
+      }
+
       setTickets(transformedTickets)
       setFilteredTickets(transformedTickets)
     } catch (error) {
@@ -221,24 +236,37 @@ export default function Metrics() {
 
   // No aplicar filtros automáticamente, solo cuando se haga clic en buscar
   const applyFilters = () => {
+    console.log('🔍 [DEBUG] Aplicando filtros:', filters)
+    console.log('🔍 [DEBUG] Total tickets antes de filtrar:', tickets.length)
+
     let filtered = [...tickets]
 
     // Filtrar por fecha (manejar formato DD-MM-YYYY)
     if (filters.startDate) {
+      const countBefore = filtered.length
       // Crear fecha de inicio a las 00:00:00
       const startDate = new Date(filters.startDate + 'T00:00:00')
+      console.log('🔍 [DEBUG] Filtro fecha inicio:', filters.startDate, '→', startDate)
+
       filtered = filtered.filter(t => {
         const ticketDate = parseDate(t.created_at)
-        if (!ticketDate) return false
+        if (!ticketDate) {
+          console.warn('🔍 [DEBUG] Fecha no parseada:', t.created_at)
+          return false
+        }
         // Comparar solo la fecha (ignorar hora)
         const ticketDateOnly = new Date(ticketDate.getFullYear(), ticketDate.getMonth(), ticketDate.getDate())
         const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
         return ticketDateOnly >= startDateOnly
       })
+      console.log(`🔍 [DEBUG] Después de filtro fecha inicio: ${countBefore} → ${filtered.length}`)
     }
     if (filters.endDate) {
+      const countBefore = filtered.length
       // Crear fecha de fin a las 23:59:59
       const endDate = new Date(filters.endDate + 'T23:59:59')
+      console.log('🔍 [DEBUG] Filtro fecha fin:', filters.endDate, '→', endDate)
+
       filtered = filtered.filter(t => {
         const ticketDate = parseDate(t.created_at)
         if (!ticketDate) return false
@@ -247,28 +275,53 @@ export default function Metrics() {
         const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
         return ticketDateOnly <= endDateOnly
       })
+      console.log(`🔍 [DEBUG] Después de filtro fecha fin: ${countBefore} → ${filtered.length}`)
     }
 
     // Filtrar por estado (usar is_closed y exceeded_threshold como fuente de verdad)
     if (filters.status === 'Abierto') {
+      const countBefore = filtered.length
+      console.log('🔍 [DEBUG] Aplicando filtro Abierto (is_closed=false && exceeded_threshold=false)')
       // Abierto: no cerrado y no vencido
-      filtered = filtered.filter(t => t.is_closed === false && t.exceeded_threshold === false)
+      filtered = filtered.filter(t => {
+        const passes = t.is_closed === false && t.exceeded_threshold === false
+        if (!passes && countBefore <= 10) {
+          console.log(`🔍 [DEBUG] Ticket ${t.ticket_id} rechazado: is_closed=${t.is_closed}, exceeded_threshold=${t.exceeded_threshold}`)
+        }
+        return passes
+      })
+      console.log(`🔍 [DEBUG] Después de filtro Abierto: ${countBefore} → ${filtered.length}`)
     } else if (filters.status === 'Cerrado') {
+      const countBefore = filtered.length
+      console.log('🔍 [DEBUG] Aplicando filtro Cerrado (is_closed=true)')
       // Cerrado: marcado como cerrado (independiente de si excedió tiempo)
       filtered = filtered.filter(t => t.is_closed === true)
+      console.log(`🔍 [DEBUG] Después de filtro Cerrado: ${countBefore} → ${filtered.length}`)
     } else if (filters.status === 'Vencido') {
+      const countBefore = filtered.length
+      console.log('🔍 [DEBUG] Aplicando filtro Vencido (is_closed=false && exceeded_threshold=true)')
       // Vencido: abierto pero excedió el tiempo de respuesta
       filtered = filtered.filter(t => t.is_closed === false && t.exceeded_threshold === true)
+      console.log(`🔍 [DEBUG] Después de filtro Vencido: ${countBefore} → ${filtered.length}`)
     }
 
     // Filtrar por operador
     if (filters.operator !== 'all') {
+      const countBefore = filtered.length
       filtered = filtered.filter(t => t.assigned_to === parseInt(filters.operator))
+      console.log(`🔍 [DEBUG] Después de filtro operador: ${countBefore} → ${filtered.length}`)
     }
 
     // Filtrar por prioridad
     if (filters.priority !== 'all') {
+      const countBefore = filtered.length
       filtered = filtered.filter(t => t.prioridad === filters.priority)
+      console.log(`🔍 [DEBUG] Después de filtro prioridad: ${countBefore} → ${filtered.length}`)
+    }
+
+    console.log('🔍 [DEBUG] ✅ Filtros aplicados. Total resultados:', filtered.length)
+    if (filtered.length > 0 && filtered.length <= 5) {
+      console.log('🔍 [DEBUG] Primeros resultados:', filtered.slice(0, 5))
     }
 
     setFilteredTickets(filtered)
