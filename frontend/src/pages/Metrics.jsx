@@ -167,20 +167,56 @@ export default function Metrics() {
     fetchTickets()
   }, [])
 
+  // Aplicar filtros automáticamente cuando se cargan/actualizan los tickets
+  // Esto asegura que:
+  // 1. En carga inicial, los filtros predeterminados (365 días) se aplican inmediatamente
+  // 2. Después de operaciones que actualizan tickets (ej: toggle threshold), los filtros se mantienen aplicados
+  // Los cambios manuales de filtros requieren hacer clic en "Buscar" (comportamiento esperado por el usuario)
+  useEffect(() => {
+    if (tickets.length > 0) {
+      applyFilters()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets])
+
   // Función para parsear fecha en formato DD-MM-YYYY HH:MM:SS
   const parseDate = (dateStr) => {
     if (!dateStr) return null
-    // Formato: "14-01-2026 21:41:31"
-    const parts = dateStr.split(' ')
-    const dateParts = parts[0].split('-')
-    const timeParts = parts[1]?.split(':') || ['00', '00', '00']
-    
-    // Convertir a formato ISO: YYYY-MM-DD
-    const year = dateParts[2]
-    const month = dateParts[1]
-    const day = dateParts[0]
-    
-    return new Date(`${year}-${month}-${day}T${timeParts.join(':')}`)
+
+    try {
+      // Validar formato "DD-MM-YYYY HH:MM:SS"
+      const parts = dateStr.trim().split(' ')
+      if (parts.length < 1) {
+        console.warn('Formato de fecha inválido:', dateStr)
+        return null
+      }
+
+      const dateParts = parts[0].split('-')
+      if (dateParts.length !== 3) {
+        console.warn('Formato de fecha inválido:', dateStr)
+        return null
+      }
+
+      const timeParts = parts[1]?.split(':') || ['00', '00', '00']
+
+      // Convertir a formato ISO: YYYY-MM-DD
+      const year = dateParts[2]
+      const month = dateParts[1]
+      const day = dateParts[0]
+
+      const date = new Date(`${year}-${month}-${day}T${timeParts.join(':')}`)
+
+      // Validar que la fecha sea válida
+      if (isNaN(date.getTime())) {
+        console.warn('Fecha inválida después de parsear:', dateStr)
+        return null
+      }
+
+      return date
+    } catch (error) {
+      console.error('Error parseando fecha:', dateStr, error)
+      return null
+    }
   }
 
   // No aplicar filtros automáticamente, solo cuando se haga clic en buscar
@@ -215,11 +251,14 @@ export default function Metrics() {
 
     // Filtrar por estado (usar is_closed y exceeded_threshold como fuente de verdad)
     if (filters.status === 'Abierto') {
-      filtered = filtered.filter(t => t.is_closed === false)
+      // Abierto: no cerrado y no vencido
+      filtered = filtered.filter(t => t.is_closed === false && t.exceeded_threshold === false)
     } else if (filters.status === 'Cerrado') {
+      // Cerrado: marcado como cerrado (independiente de si excedió tiempo)
       filtered = filtered.filter(t => t.is_closed === true)
     } else if (filters.status === 'Vencido') {
-      filtered = filtered.filter(t => t.exceeded_threshold === true)
+      // Vencido: abierto pero excedió el tiempo de respuesta
+      filtered = filtered.filter(t => t.is_closed === false && t.exceeded_threshold === true)
     }
 
     // Filtrar por operador
@@ -237,16 +276,21 @@ export default function Metrics() {
 
   const exportToCSV = () => {
     const headers = ['ID', 'Cliente', 'Asunto', 'Estado', 'Prioridad', 'Operador', 'Fecha', 'Tiempo Respuesta']
-    const rows = filteredTickets.map(t => [
-      t.ticket_id,
-      t.cliente,
-      t.asunto,
-      t.estado,
-      t.prioridad,
-      t.operator_name,
-      new Date(t.created_at).toLocaleString(),
-      t.response_time ? `${t.response_time} min` : 'N/A'
-    ])
+    const rows = filteredTickets.map(t => {
+      const parsedDate = parseDate(t.created_at)
+      const formattedDate = parsedDate ? parsedDate.toLocaleString() : t.created_at
+
+      return [
+        t.ticket_id,
+        t.cliente,
+        t.asunto,
+        t.estado,
+        t.prioridad,
+        t.operator_name,
+        formattedDate,
+        t.response_time ? `${t.response_time} min` : 'N/A'
+      ]
+    })
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
