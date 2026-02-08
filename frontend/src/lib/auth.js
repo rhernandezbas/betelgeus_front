@@ -1,6 +1,6 @@
 // Gestión de sesiones con expiración automática
 
-const SESSION_DURATION = 3600000 // 1 hora en milisegundos
+const SESSION_DURATION = 7200000 // 2 horas en milisegundos (con auto-renovación, efectivamente ilimitado si hay actividad)
 const SESSION_KEY = 'betelgeuse_session'
 
 /**
