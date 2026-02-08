@@ -3,12 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import {
-  RefreshCw, Clock, Bell, UserCheck, Briefcase, Plus
+  RefreshCw, Clock, Bell, UserCheck, Briefcase, Plus, RotateCcw
 } from 'lucide-react'
 import { OperatorCard, ConfigDialog, ScheduleForm, ScheduleList } from '@/components/operators'
 
@@ -28,6 +28,7 @@ export default function OperatorsManagement() {
     whatsapp_number: '',
     paused_reason: ''
   })
+  const [resetCountersDialogOpen, setResetCountersDialogOpen] = useState(false)
   const { toast } = useToast()
 
   const fetchOperators = async () => {
@@ -43,6 +44,28 @@ export default function OperatorsManagement() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleResetCounters = async () => {
+    setResetCountersDialogOpen(false)
+
+    try {
+      await adminApi.resetCounters({ performed_by: 'admin' })
+
+      toast({
+        title: 'Contadores Reiniciados',
+        description: 'Los contadores de asignación de todos los operadores han sido reiniciados a 0',
+      })
+
+      // Recargar operadores para ver los contadores actualizados
+      await fetchOperators()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Error al reiniciar contadores',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -296,10 +319,16 @@ export default function OperatorsManagement() {
             Administra operadores, horarios de asignación y alertas
           </p>
         </div>
-        <Button onClick={fetchOperators} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setResetCountersDialogOpen(true)} variant="destructive" size="sm">
+            <RotateCcw className="h-4 w-4 mr-2" />
+            Reiniciar Contadores
+          </Button>
+          <Button onClick={fetchOperators} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Main Tabs */}
@@ -554,6 +583,53 @@ export default function OperatorsManagement() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmación para Reiniciar Contadores */}
+      <Dialog open={resetCountersDialogOpen} onOpenChange={setResetCountersDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-red-600" />
+              <span>Reiniciar Contadores de Asignación</span>
+            </DialogTitle>
+            <DialogDescription className="pt-4 space-y-3">
+              <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-200">
+                <p className="font-medium text-red-900">⚠️ Esta acción afecta a TODOS los operadores</p>
+                <p className="text-sm text-red-800">
+                  Se reiniciarán a <span className="font-bold">0</span> los contadores de tickets asignados de todos los operadores en la tabla <code className="bg-red-100 px-1 rounded">assigned_tracker</code>.
+                </p>
+              </div>
+
+              <div className="text-sm text-gray-600 space-y-2">
+                <p className="font-medium text-gray-800">¿Estás seguro que deseas continuar?</p>
+                <ul className="list-disc list-inside space-y-1 text-gray-700">
+                  <li>Los contadores de todos los operadores se pondrán en 0</li>
+                  <li>Esta acción no se puede deshacer</li>
+                  <li>El historial de asignaciones previas no se elimina</li>
+                  <li>Solo se reinicia el contador actual</li>
+                </ul>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setResetCountersDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleResetCounters}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Sí, Reiniciar Contadores
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
