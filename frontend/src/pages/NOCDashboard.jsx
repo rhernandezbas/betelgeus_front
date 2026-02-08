@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { hasPermission, getCurrentUser } from '@/lib/permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +25,9 @@ import {
   WifiOff,
   Filter,
   Plus,
-  BarChart3
+  BarChart3,
+  Lock,
+  ShieldAlert
 } from 'lucide-react'
 
 // Components
@@ -49,6 +52,10 @@ import {
 } from '@/components/noc/ControlPanel'
 
 export default function NOCDashboard() {
+  // Check user permissions
+  const user = getCurrentUser()
+  const canAccessControl = hasPermission(user, 'can_access_noc_control')
+
   // NOC Data Hook
   const {
     sites,
@@ -356,7 +363,7 @@ export default function NOCDashboard() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className={`grid w-full ${canAccessControl ? 'grid-cols-5' : 'grid-cols-4'}`}>
           <TabsTrigger value="sites" className="flex items-center gap-2">
             <Server className="h-4 w-4" />
             Sites en Vivo
@@ -383,10 +390,12 @@ export default function NOCDashboard() {
             <FileText className="h-4 w-4" />
             Post-Mortem
           </TabsTrigger>
-          <TabsTrigger value="control" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Control
-          </TabsTrigger>
+          {canAccessControl && (
+            <TabsTrigger value="control" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Control
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Sites Tab */}
@@ -582,82 +591,103 @@ export default function NOCDashboard() {
           )}
         </TabsContent>
 
-        {/* Control Tab */}
-        <TabsContent value="control" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <PollingControl
-              pollingStatus={pollingStatus}
-              loading={pollingLoading}
-              onStart={async () => {
-                try {
-                  await startPolling()
-                  toast({ title: 'Polling Iniciado' })
-                } catch (error) {
-                  toast({ title: 'Error', description: error.message, variant: 'destructive' })
-                }
-              }}
-              onStop={async () => {
-                try {
-                  await stopPolling()
-                  toast({ title: 'Polling Detenido' })
-                } catch (error) {
-                  toast({ title: 'Error', description: error.message, variant: 'destructive' })
-                }
-              }}
-              onScan={handleScan}
-            />
+        {/* Control Tab - Protected */}
+        {canAccessControl ? (
+          <TabsContent value="control" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PollingControl
+                pollingStatus={pollingStatus}
+                loading={pollingLoading}
+                onStart={async () => {
+                  try {
+                    await startPolling()
+                    toast({ title: 'Polling Iniciado' })
+                  } catch (error) {
+                    toast({ title: 'Error', description: error.message, variant: 'destructive' })
+                  }
+                }}
+                onStop={async () => {
+                  try {
+                    await stopPolling()
+                    toast({ title: 'Polling Detenido' })
+                  } catch (error) {
+                    toast({ title: 'Error', description: error.message, variant: 'destructive' })
+                  }
+                }}
+                onScan={handleScan}
+              />
 
-            <WhatsAppTest onTest={testWhatsApp} />
+              <WhatsAppTest onTest={testWhatsApp} />
 
-            <HealthCheck health={health} onRefresh={fetchHealth} />
+              <HealthCheck health={health} onRefresh={fetchHealth} />
 
-            {/* Quick Actions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Acciones Rápidas</CardTitle>
-                <CardDescription>
-                  Atajos para operaciones comunes
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setActiveTab('sites')
-                    refreshAll()
-                  }}
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Actualizar Todo
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setActiveTab('events')
-                    setEventFilter('active')
-                    fetchActiveEvents()
-                  }}
-                >
-                  <AlertTriangle className="h-4 w-4 mr-2" />
-                  Ver Eventos Activos
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    setActiveTab('postmortem')
-                    setPostMortemEditorOpen(true)
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nuevo Post-Mortem
-                </Button>
+              {/* Quick Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Acciones Rápidas</CardTitle>
+                  <CardDescription>
+                    Atajos para operaciones comunes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setActiveTab('sites')
+                      refreshAll()
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Actualizar Todo
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setActiveTab('events')
+                      setEventFilter('active')
+                      fetchActiveEvents()
+                    }}
+                  >
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Ver Eventos Activos
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setActiveTab('postmortem')
+                      setPostMortemEditorOpen(true)
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nuevo Post-Mortem
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        ) : (
+          <TabsContent value="control" className="space-y-6">
+            <Card className="border-orange-200 bg-orange-50">
+              <CardContent className="py-12 text-center">
+                <ShieldAlert className="h-16 w-16 mx-auto text-orange-500 mb-4" />
+                <h3 className="text-xl font-semibold text-orange-800 mb-2">
+                  Acceso Restringido
+                </h3>
+                <p className="text-orange-700 max-w-md mx-auto">
+                  No tienes permisos para acceder al panel de control del NOC.
+                  Contacta a un administrador si necesitas acceso.
+                </p>
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-orange-100 rounded-full text-sm text-orange-800">
+                  <Lock className="h-4 w-4" />
+                  Requiere permiso: NOC Control
+                </div>
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Site Details Dialog */}

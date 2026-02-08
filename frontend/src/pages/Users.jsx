@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { Users as UsersIcon, Plus, Edit2, Trash2, Key, RefreshCw } from 'lucide-react'
+import { Users as UsersIcon, Plus, Edit2, Trash2, Key, RefreshCw, Shield, AlertTriangle, Wrench, User } from 'lucide-react'
 import axios from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
@@ -35,7 +35,7 @@ export default function Users() {
   })
   const { toast } = useToast()
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true)
       const response = await axios.get(`${API_BASE_URL}/api/auth/users`, {
@@ -51,9 +51,9 @@ export default function Users() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const fetchOperators = async () => {
+  const fetchOperators = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/api/admin/operators`, {
         withCredentials: true
@@ -62,12 +62,12 @@ export default function Users() {
     } catch (error) {
       console.error('Error al cargar operadores:', error)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchUsers()
     fetchOperators()
-  }, [])
+  }, [fetchUsers, fetchOperators])
 
   const handleCreate = () => {
     setEditingUser(null)
@@ -365,32 +365,92 @@ export default function Users() {
                       )}
                     </td>
                     <td className="p-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id={`operator-view-${user.id}`}
-                            checked={user.can_access_operator_view !== false}
-                            onChange={(e) => handleTogglePermission(user.id, 'can_access_operator_view', e.target.checked)}
-                            className="h-4 w-4 text-blue-600 rounded"
-                          />
-                          <label htmlFor={`operator-view-${user.id}`} className="text-xs text-gray-700">
-                            Vista Operador
-                          </label>
+                      {user.role === 'admin' ? (
+                        <div className="flex items-center gap-2 px-2 py-1 bg-purple-100 rounded-md w-fit">
+                          <Shield className="h-4 w-4 text-purple-600" />
+                          <span className="text-xs font-medium text-purple-800">
+                            Acceso Total
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            id={`device-analysis-${user.id}`}
-                            checked={user.can_access_device_analysis !== false}
-                            onChange={(e) => handleTogglePermission(user.id, 'can_access_device_analysis', e.target.checked)}
-                            className="h-4 w-4 text-blue-600 rounded"
-                          />
-                          <label htmlFor={`device-analysis-${user.id}`} className="text-xs text-gray-700">
-                            Análisis Dispositivos
-                          </label>
+                      ) : (
+                        <div className="space-y-2">
+                          {/* NOC Group */}
+                          <div className="border rounded-md p-2 bg-red-50/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <AlertTriangle className="h-3 w-3 text-red-600" />
+                              <span className="text-xs font-semibold text-red-800">NOC</span>
+                            </div>
+                            <div className="space-y-1 ml-4">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`noc-dashboard-${user.id}`}
+                                  checked={user.can_access_noc_dashboard !== false}
+                                  onChange={(e) => handleTogglePermission(user.id, 'can_access_noc_dashboard', e.target.checked)}
+                                  className="h-3 w-3 text-red-600 rounded"
+                                />
+                                <label htmlFor={`noc-dashboard-${user.id}`} className="text-xs text-gray-700">
+                                  Dashboard
+                                </label>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`noc-control-${user.id}`}
+                                  checked={user.can_access_noc_control !== false}
+                                  onChange={(e) => handleTogglePermission(user.id, 'can_access_noc_control', e.target.checked)}
+                                  className="h-3 w-3 text-red-600 rounded"
+                                />
+                                <label htmlFor={`noc-control-${user.id}`} className="text-xs text-gray-700">
+                                  Control
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Tools Group */}
+                          <div className="border rounded-md p-2 bg-blue-50/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Wrench className="h-3 w-3 text-blue-600" />
+                              <span className="text-xs font-semibold text-blue-800">Herramientas</span>
+                            </div>
+                            <div className="space-y-1 ml-4">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`device-analysis-${user.id}`}
+                                  checked={user.can_access_device_analysis !== false}
+                                  onChange={(e) => handleTogglePermission(user.id, 'can_access_device_analysis', e.target.checked)}
+                                  className="h-3 w-3 text-blue-600 rounded"
+                                />
+                                <label htmlFor={`device-analysis-${user.id}`} className="text-xs text-gray-700">
+                                  Análisis Dispositivos
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Operator Group */}
+                          <div className="border rounded-md p-2 bg-green-50/50">
+                            <div className="flex items-center gap-1 mb-1">
+                              <User className="h-3 w-3 text-green-600" />
+                              <span className="text-xs font-semibold text-green-800">Operador</span>
+                            </div>
+                            <div className="space-y-1 ml-4">
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`operator-view-${user.id}`}
+                                  checked={user.can_access_operator_view !== false}
+                                  onChange={(e) => handleTogglePermission(user.id, 'can_access_operator_view', e.target.checked)}
+                                  className="h-3 w-3 text-green-600 rounded"
+                                />
+                                <label htmlFor={`operator-view-${user.id}`} className="text-xs text-gray-700">
+                                  Vista Operador
+                                </label>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </td>
                     <td className="p-3">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
