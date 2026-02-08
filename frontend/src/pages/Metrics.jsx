@@ -273,11 +273,11 @@ export default function Metrics() {
       console.log('🔍 [DEBUG] Filtro fecha inicio:', filters.startDate, '→', startDate)
 
       // Mostrar ejemplos de fechas para diagnosticar
-      if (filtered.length > 0 && filtered.length <= 5) {
-        console.log('🔍 [DEBUG] Primeros tickets con fechas:')
+      if (filtered.length > 0) {
+        console.log('🔍 [DEBUG] Primeros tickets con fechas (primeros 3):')
         filtered.slice(0, 3).forEach(t => {
           const parsed = parseDate(t.created_at)
-          console.log(`  Ticket #${t.ticket_id}: "${t.created_at}" → ${parsed ? parsed.toISOString() : 'NULL'}`)
+          console.log(`  Ticket #${t.ticket_id}: "${t.created_at}" (tipo: ${typeof t.created_at}) → ${parsed ? parsed.toISOString() : 'NULL'}`)
         })
       }
 
@@ -321,9 +321,9 @@ export default function Metrics() {
     // Filtrar por estado (usar is_closed y exceeded_threshold como fuente de verdad)
     if (filters.status === 'Abierto') {
       const countBefore = filtered.length
-      console.log('🔍 [DEBUG] Aplicando filtro Abierto (is_closed=false && exceeded_threshold=false)')
+      console.log('🔍 [DEBUG] Aplicando filtro Abierto (is_closed=false, incluye vencidos)')
 
-      // Mostrar valores de los primeros 5 tickets para diagnosticar
+      // Mostrar valores de los primeros 3 tickets para diagnosticar
       if (filtered.length > 0) {
         console.log('🔍 [DEBUG] Valores de primeros 3 tickets:')
         filtered.slice(0, 3).forEach(t => {
@@ -331,9 +331,9 @@ export default function Metrics() {
         })
       }
 
-      // Abierto: no cerrado y no vencido
+      // Abierto: todos los tickets que NO están cerrados (incluye vencidos y no vencidos)
       filtered = filtered.filter(t => {
-        const passes = t.is_closed === false && t.exceeded_threshold === false
+        const passes = t.is_closed === false
         return passes
       })
       console.log(`🔍 [DEBUG] Después de filtro Abierto: ${countBefore} → ${filtered.length}`)
