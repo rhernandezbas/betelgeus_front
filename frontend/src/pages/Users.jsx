@@ -385,7 +385,7 @@ export default function Users() {
                                 <input
                                   type="checkbox"
                                   id={`noc-dashboard-${user.id}`}
-                                  checked={user.can_access_noc_dashboard !== false}
+                                  checked={user.can_access_noc_dashboard === true}
                                   onChange={(e) => handleTogglePermission(user.id, 'can_access_noc_dashboard', e.target.checked)}
                                   className="h-3 w-3 text-red-600 rounded"
                                 />
@@ -397,7 +397,7 @@ export default function Users() {
                                 <input
                                   type="checkbox"
                                   id={`noc-control-${user.id}`}
-                                  checked={user.can_access_noc_control !== false}
+                                  checked={user.can_access_noc_control === true}
                                   onChange={(e) => handleTogglePermission(user.id, 'can_access_noc_control', e.target.checked)}
                                   className="h-3 w-3 text-red-600 rounded"
                                 />

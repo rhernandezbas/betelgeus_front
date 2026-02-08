@@ -7,30 +7,34 @@
 
 // Individual permissions with their metadata
 export const PERMISSIONS = {
-  // Operator permissions
+  // Operator permissions (legacy - default true for backwards compatibility)
   can_access_operator_view: {
     label: 'Vista Operador',
     description: 'Acceso a la vista de operador',
-    group: 'operator'
+    group: 'operator',
+    defaultValue: true // Legacy permission
   },
 
-  // Device Analysis permissions
+  // Device Analysis permissions (legacy - default true for backwards compatibility)
   can_access_device_analysis: {
     label: 'Análisis Dispositivos',
     description: 'Acceso al análisis de dispositivos',
-    group: 'tools'
+    group: 'tools',
+    defaultValue: true // Legacy permission
   },
 
-  // NOC permissions
+  // NOC permissions (new - default false, must be explicitly granted)
   can_access_noc_dashboard: {
     label: 'NOC Dashboard',
     description: 'Acceso al dashboard NOC (vista de sites, eventos, métricas)',
-    group: 'noc'
+    group: 'noc',
+    defaultValue: false // Must be explicitly granted
   },
   can_access_noc_control: {
     label: 'NOC Control',
     description: 'Control del sistema NOC (polling, WhatsApp, post-mortems)',
     group: 'noc',
+    defaultValue: false, // Must be explicitly granted
     requiresAdmin: true // Solo admin puede otorgar este permiso
   }
 }
@@ -72,8 +76,17 @@ export function hasPermission(user, permission) {
   // Admin role has all permissions
   if (user.role === 'admin') return true
 
-  // Check specific permission (default to true if not explicitly set to false)
-  return user[permission] !== false
+  // Get permission config
+  const permConfig = PERMISSIONS[permission]
+  const defaultValue = permConfig?.defaultValue ?? true // Legacy behavior: default true
+
+  // If permission is explicitly set, use that value
+  if (user[permission] !== undefined) {
+    return user[permission] === true
+  }
+
+  // Otherwise use default value
+  return defaultValue
 }
 
 /**
