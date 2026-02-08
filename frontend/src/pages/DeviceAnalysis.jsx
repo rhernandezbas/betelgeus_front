@@ -1,36 +1,29 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { 
-  Search, 
-  Activity, 
-  Wifi, 
-  Signal, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  ThumbsUp, 
-  ThumbsDown, 
-  AlertTriangle,
-  RefreshCw,
+import { useExecutionManager } from '@/hooks/useExecutionManager'
+import ExecutionsPanel from '@/components/device-analysis/ExecutionsPanel'
+import {
+  Search,
+  Wifi,
+  Clock,
+  CheckCircle,
+  XCircle,
+  ThumbsUp,
   History,
-  BarChart3,
   Loader2,
   MessageSquare,
-  TrendingUp,
   Server,
   Radio,
   FileText,
-  Zap,
-  Settings,
-  Power,
   Star
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 // Station Analyzer Class
 class StationAnalyzer {
@@ -49,11 +42,11 @@ class StationAnalyzer {
         password: 'B8d7f9ub1234!'
       })
     })
-    
+
     if (!response.ok) {
       throw new Error(`Error en análisis: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
@@ -63,11 +56,11 @@ class StationAnalyzer {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip, model })
     })
-    
+
     if (!response.ok) {
       throw new Error(`Error habilitando frecuencias: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
@@ -77,21 +70,21 @@ class StationAnalyzer {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ip, max_wait_time: maxWaitTime })
     })
-    
+
     if (!response.ok) {
       throw new Error(`Error esperando conexión: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
   async getFlowStatus(ip) {
     const response = await fetch(`${this.baseUrl}/stations/flow-status/${ip}`)
-    
+
     if (!response.ok) {
       throw new Error(`Error obteniendo estado: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
@@ -105,31 +98,31 @@ class StationAnalyzer {
         ...feedbackData
       })
     })
-    
+
     if (!response.ok) {
       throw new Error(`Error enviando feedback: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
   async getFeedbackList() {
     const response = await fetch(`${this.baseUrl}/feedback/list`)
-    
+
     if (!response.ok) {
       throw new Error(`Error obteniendo feedback: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
   async getFeedbackByAnalysis(analysisId) {
     const response = await fetch(`${this.baseUrl}/feedback/analysis/${analysisId}/feedback`)
-    
+
     if (!response.ok) {
       throw new Error(`Error obteniendo feedback del análisis: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
@@ -137,32 +130,32 @@ class StationAnalyzer {
   async getLogs(filters = {}) {
     const params = new URLSearchParams(filters)
     const response = await fetch(`${this.baseUrl}/logs/?${params}`)
-    
+
     if (!response.ok) {
       throw new Error(`Error obteniendo logs: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
   async getRecentLogs(limit = 50) {
     const response = await fetch(`${this.baseUrl}/logs/recent?limit=${limit}`)
-    
+
     if (!response.ok) {
       throw new Error(`Error obteniendo logs recientes: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
   async searchLogs(query, filters = {}) {
     const params = new URLSearchParams({ q: query, ...filters })
     const response = await fetch(`${this.baseUrl}/logs/search?${params}`)
-    
+
     if (!response.ok) {
       throw new Error(`Error buscando logs: ${response.statusText}`)
     }
-    
+
     return await response.json()
   }
 
@@ -170,27 +163,97 @@ class StationAnalyzer {
     const response = await fetch(`${this.baseUrl}/logs/clear`, {
       method: 'DELETE'
     })
-    
+
     if (!response.ok) {
       throw new Error(`Error limpiando logs: ${response.statusText}`)
     }
-    
+
     return await response.json()
+  }
+}
+
+// Execution-aware wrapper for StationAnalyzer
+class ExecutionAwareAnalyzer extends StationAnalyzer {
+  constructor(executionId, updateCallback, baseUrl) {
+    super(baseUrl)
+    this.executionId = executionId
+    this.updateCallback = updateCallback
+  }
+
+  async analyzeStation(ip, mac) {
+    this.updateCallback(this.executionId, {
+      status: 'analyzing',
+      progress: {
+        currentStep: 'Analyzing',
+        message: 'Analizando dispositivo y obteniendo recomendaciones de IA...'
+      }
+    })
+
+    const result = await super.analyzeStation(ip, mac)
+
+    if (result.needs_frequency_enable) {
+      this.updateCallback(this.executionId, {
+        status: 'frequency_prompt',
+        result,
+        progress: {
+          currentStep: 'Frequency Prompt',
+          message: `La IA recomienda habilitar frecuencias para ${result.identified_model}`
+        }
+      })
+    }
+
+    return result
+  }
+
+  async enableFrequencies(ip, model) {
+    this.updateCallback(this.executionId, {
+      status: 'enabling_frequencies',
+      progress: {
+        currentStep: 'Enabling Frequencies',
+        message: 'Habilitando frecuencias 5GHz...'
+      }
+    })
+
+    return await super.enableFrequencies(ip, model)
+  }
+
+  async waitForConnection(ip, maxWaitTime) {
+    this.updateCallback(this.executionId, {
+      status: 'waiting_connection',
+      progress: {
+        currentStep: 'Waiting Connection',
+        message: 'Esperando reconexión del dispositivo...'
+      }
+    })
+
+    return await super.waitForConnection(ip, maxWaitTime)
   }
 }
 
 export default function DeviceAnalysis() {
   const [deviceIp, setDeviceIp] = useState('')
   const [deviceMac, setDeviceMac] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState(null)
-  const [currentStep, setCurrentStep] = useState('idle') // idle, analyzing, frequency_prompt, enabling_frequencies, waiting_connection, completed
-  const [progress, setProgress] = useState({})
-  const [feedbackComment, setFeedbackComment] = useState('')
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
-  const [history, setHistory] = useState([])
   const [activeTab, setActiveTab] = useState('analyze')
-  
+
+  // Execution management
+  const {
+    activeExecutions,
+    history,
+    startExecution,
+    updateExecution,
+    completeExecution,
+    failExecution,
+    cancelExecution,
+    clearHistory,
+    activeCount,
+    canStartNew,
+    maxExecutions
+  } = useExecutionManager()
+
+  // Details dialog
+  const [selectedExecution, setSelectedExecution] = useState(null)
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+
   // Logs states
   const [logs, setLogs] = useState([])
   const [logsLoading, setLogsLoading] = useState(false)
@@ -199,54 +262,18 @@ export default function DeviceAnalysis() {
     level: '',
     limit: 100
   })
-  
+
   // Feedback states
   const [feedbackList, setFeedbackList] = useState([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
-  
+  const [feedbackComment, setFeedbackComment] = useState('')
+
   const { toast } = useToast()
 
-  const analyzer = new StationAnalyzer()
-
-  useEffect(() => {
-    if (activeTab === 'history') {
-      fetchHistory()
-    } else if (activeTab === 'logs') {
-      fetchLogs()
-    } else if (activeTab === 'feedback') {
-      fetchFeedbackList()
-    }
-  }, [activeTab])
-
-  const fetchHistory = async () => {
-    try {
-      // Por ahora simulamos historia local
-      const savedHistory = localStorage.getItem('stationAnalysisHistory')
-      if (savedHistory) {
-        setHistory(JSON.parse(savedHistory))
-      }
-    } catch (error) {
-      console.error('Error fetching history:', error)
-    }
-  }
-
-  const saveToHistory = (analysis) => {
-    const newEntry = {
-      id: Date.now(),
-      timestamp: new Date().toISOString(),
-      ip: analysis.ip,
-      model: analysis.identified_model,
-      status: analysis.status,
-      llm_analysis: analysis.llm_analysis
-    }
-    
-    const updatedHistory = [newEntry, ...history.slice(0, 49)] // Keep last 50
-    setHistory(updatedHistory)
-    localStorage.setItem('stationAnalysisHistory', JSON.stringify(updatedHistory))
-  }
+  const analyzer = useMemo(() => new StationAnalyzer(), [])
 
   // Logs functions
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLogsLoading(true)
     try {
       const response = await analyzer.getLogs(logsFilters)
@@ -261,7 +288,7 @@ export default function DeviceAnalysis() {
     } finally {
       setLogsLoading(false)
     }
-  }
+  }, [analyzer, logsFilters, toast])
 
   const fetchRecentLogs = async () => {
     setLogsLoading(true)
@@ -321,7 +348,7 @@ export default function DeviceAnalysis() {
   }
 
   // Feedback functions
-  const fetchFeedbackList = async () => {
+  const fetchFeedbackList = useCallback(async () => {
     setFeedbackLoading(true)
     try {
       const response = await analyzer.getFeedbackList()
@@ -336,9 +363,18 @@ export default function DeviceAnalysis() {
     } finally {
       setFeedbackLoading(false)
     }
-  }
+  }, [analyzer, toast])
 
-  const handleFeedback = async () => {
+  // Tab change effect
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      fetchLogs()
+    } else if (activeTab === 'feedback') {
+      fetchFeedbackList()
+    }
+  }, [activeTab, fetchLogs, fetchFeedbackList])
+
+  const handleFeedback = async (executionId) => {
     if (!feedbackComment.trim()) {
       toast({
         title: 'Error',
@@ -349,26 +385,22 @@ export default function DeviceAnalysis() {
     }
 
     try {
-      // Enviar feedback a la API
       const feedbackData = {
         comment: feedbackComment,
-        rating: 5, // Podrías agregar un selector de rating
+        rating: 5,
         user_agent: navigator.userAgent,
         timestamp: new Date().toISOString()
       }
 
-      if (analysisResult) {
-        // Si hay un análisis actual, asociar el feedback
-        await analyzer.submitFeedback(analysisResult.id || Date.now(), feedbackData)
-      }
+      await analyzer.submitFeedback(executionId || Date.now(), feedbackData)
 
-      setFeedbackSubmitted(true)
       toast({
         title: 'Gracias',
         description: 'Tu feedback ha sido enviado'
       })
-      
-      // Actualizar lista de feedback si estamos en esa tab
+
+      setFeedbackComment('')
+
       if (activeTab === 'feedback') {
         fetchFeedbackList()
       }
@@ -392,126 +424,107 @@ export default function DeviceAnalysis() {
       return
     }
 
-    setLoading(true)
-    setCurrentStep('analyzing')
-    setProgress({ message: 'Iniciando análisis completo...' })
+    if (!canStartNew) {
+      toast({
+        title: 'Límite Alcanzado',
+        description: `Máximo ${maxExecutions} análisis simultáneos. Espera a que uno termine.`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    const executionId = startExecution(deviceIp, deviceMac)
+
+    if (!executionId) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo iniciar el análisis',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Clear form immediately
+    const ip = deviceIp
+    const mac = deviceMac
+    setDeviceIp('')
+    setDeviceMac('')
+
+    toast({
+      title: 'Análisis Iniciado',
+      description: `Analizando ${ip}...`
+    })
+
+    // Run in background
+    runAnalysis(executionId, ip, mac)
+  }
+
+  const runAnalysis = async (executionId, ip, mac) => {
+    const execAnalyzer = new ExecutionAwareAnalyzer(executionId, updateExecution)
 
     try {
-      // Paso 1: Análisis completo
-      setProgress({ message: 'Analizando dispositivo y obteniendo recomendaciones de IA...' })
-      const analysis = await analyzer.analyzeStation(deviceIp, deviceMac || undefined)
-      
-      setAnalysisResult(analysis)
-      saveToHistory(analysis)
-      
-      if (analysis.status === 'success') {
-        toast({
-          title: 'Análisis Completado',
-          description: `Dispositivo identificado: ${analysis.identified_model}`
-        })
+      // Step 1: Analyze
+      const analysis = await execAnalyzer.analyzeStation(ip, mac || undefined)
 
-        // Paso 2: Verificar si necesita habilitar frecuencias
-        if (analysis.needs_frequency_enable) {
-          setCurrentStep('frequency_prompt')
-          setProgress({ 
-            message: `La IA recomienda habilitar frecuencias para ${analysis.identified_model}`,
-            recommendation: analysis.llm_analysis?.summary
-          })
-        } else {
-          setCurrentStep('completed')
-          setProgress({ message: 'Análisis completado exitosamente' })
-        }
-      } else {
+      if (analysis.status !== 'success') {
         throw new Error(analysis.message || 'Error en análisis')
       }
+
+      // Auto-enable frequencies if recommended
+      if (analysis.needs_frequency_enable) {
+        toast({
+          title: 'Habilitando Frecuencias',
+          description: `Auto-habilitando para ${analysis.identified_model}`
+        })
+
+        // Step 2: Enable frequencies
+        const freqResult = await execAnalyzer.enableFrequencies(ip, analysis.identified_model)
+
+        // Step 3: Wait for connection if needed
+        if (freqResult.device_offline) {
+          const connectionResult = await execAnalyzer.waitForConnection(ip, 360)
+
+          if (!connectionResult.connection_restored) {
+            throw new Error('El dispositivo no se reconectó en el tiempo esperado')
+          }
+
+          analysis.connection_restored = true
+          analysis.connection_attempts = connectionResult.attempts
+        }
+
+        analysis.frequencies_enabled = true
+      }
+
+      // Complete execution
+      completeExecution(executionId, analysis)
+
+      toast({
+        title: 'Análisis Completado',
+        description: `${ip} - ${analysis.identified_model}`
+      })
     } catch (error) {
       console.error('Error en análisis:', error)
+      failExecution(executionId, error.message)
+
       toast({
         title: 'Error en Análisis',
         description: error.message,
         variant: 'destructive'
       })
-      setCurrentStep('idle')
-    } finally {
-      setLoading(false)
     }
   }
 
-  const handleEnableFrequencies = async () => {
-    if (!analysisResult) return
-
-    setLoading(true)
-    setCurrentStep('enabling_frequencies')
-    setProgress({ message: 'Habilitando frecuencias 5GHz...' })
-
-    try {
-      // Paso 3: Habilitar frecuencias
-      const freqResult = await analyzer.enableFrequencies(
-        analysisResult.ip, 
-        analysisResult.identified_model
-      )
-
-      toast({
-        title: 'Frecuencias Habilitadas',
-        description: freqResult.message
-      })
-
-      // Paso 4: Esperar reconexión si el dispositivo se apagó
-      if (freqResult.device_offline) {
-        setCurrentStep('waiting_connection')
-        setProgress({ 
-          message: 'El dispositivo estará offline temporalmente. Esperando reconexión...',
-          maxWait: 360
-        })
-
-        const connectionResult = await analyzer.waitForConnection(
-          analysisResult.ip, 
-          360
-        )
-
-        if (connectionResult.connection_restored) {
-          toast({
-            title: 'Dispositivo Reconectado',
-            description: `Conexión restaurada después de ${connectionResult.attempts} intentos`
-          })
-          setCurrentStep('completed')
-          setProgress({ 
-            message: 'Análisis completado y dispositivo optimizado',
-            connectionTime: connectionResult.elapsed_seconds
-          })
-        } else {
-          throw new Error('El dispositivo no se reconectó en el tiempo esperado')
-        }
-      } else {
-        setCurrentStep('completed')
-        setProgress({ message: 'Frecuencias habilitadas exitosamente' })
-      }
-    } catch (error) {
-      console.error('Error habilitando frecuencias:', error)
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-      setCurrentStep('frequency_prompt')
-    } finally {
-      setLoading(false)
-    }
+  const handleViewDetails = (execution) => {
+    setSelectedExecution(execution)
+    setDetailsDialogOpen(true)
   }
 
-  const handleSkipFrequencies = () => {
-    setCurrentStep('completed')
-    setProgress({ message: 'Análisis completado (frecuencias no habilitadas)' })
-  }
-
-  const handleReset = () => {
-    setDeviceIp('')
-    setDeviceMac('')
-    setAnalysisResult(null)
-    setCurrentStep('idle')
-    setProgress({})
-    setFeedbackComment('')
-    setFeedbackSubmitted(false)
+  const handleCancel = (executionId) => {
+    cancelExecution(executionId)
+    toast({
+      title: 'Análisis Cancelado',
+      description: 'El análisis ha sido cancelado'
+    })
   }
 
   return (
@@ -539,7 +552,7 @@ export default function DeviceAnalysis() {
                   Configuración de Análisis
                 </CardTitle>
                 <CardDescription>
-                  Ingresa la IP del dispositivo para iniciar el análisis completo
+                  Ingresa la IP del dispositivo para iniciar el análisis completo. Puedes ejecutar hasta {maxExecutions} análisis simultáneamente.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -552,7 +565,7 @@ export default function DeviceAnalysis() {
                       placeholder="192.168.1.100"
                       value={deviceIp}
                       onChange={(e) => setDeviceIp(e.target.value)}
-                      disabled={loading}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
                     />
                   </div>
                   <div className="space-y-2">
@@ -563,272 +576,128 @@ export default function DeviceAnalysis() {
                       placeholder="00:27:22:XX:XX:XX"
                       value={deviceMac}
                       onChange={(e) => setDeviceMac(e.target.value)}
-                      disabled={loading}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
                     />
                   </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={handleAnalyze} 
-                    disabled={loading || !deviceIp}
-                    className="flex items-center gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Analizando...
-                      </>
-                    ) : (
-                      <>
-                        <Search className="h-4 w-4" />
-                        Iniciar Análisis
-                      </>
-                    )}
-                  </Button>
-                  
-                  {currentStep !== 'idle' && (
-                    <Button 
-                      variant="outline" 
-                      onClick={handleReset}
-                      disabled={loading}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Nuevo Análisis
-                    </Button>
-                  )}
-                </div>
+
+                <Button
+                  onClick={handleAnalyze}
+                  disabled={!canStartNew || !deviceIp}
+                  className="flex items-center gap-2"
+                >
+                  <Search className="h-4 w-4" />
+                  {canStartNew ? 'Iniciar Análisis' : `Límite Alcanzado (${activeCount}/${maxExecutions})`}
+                </Button>
               </CardContent>
             </Card>
 
-            {/* Progress Section */}
-            {currentStep !== 'idle' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5" />
-                    Progreso del Análisis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {/* Step Indicator */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          ['analyzing', 'frequency_prompt', 'enabling_frequencies', 'waiting_connection', 'completed'].includes(currentStep) 
-                            ? 'bg-green-500' 
-                            : 'bg-gray-300'
-                        }`} />
-                        <span className="text-sm font-medium">Análisis</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          ['enabling_frequencies', 'waiting_connection', 'completed'].includes(currentStep) 
-                            ? 'bg-green-500' 
-                            : currentStep === 'frequency_prompt' ? 'bg-yellow-500' : 'bg-gray-300'
-                        }`} />
-                        <span className="text-sm font-medium">Frecuencias</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${
-                          currentStep === 'completed' ? 'bg-green-500' : 'bg-gray-300'
-                        }`} />
-                        <span className="text-sm font-medium">Completado</span>
-                      </div>
-                    </div>
-
-                    {/* Current Step Message */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-center gap-2">
-                        {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                        <p className="text-sm text-blue-800">{progress.message}</p>
-                      </div>
-                      
-                      {progress.recommendation && (
-                        <div className="mt-2 p-2 bg-white rounded border">
-                          <p className="text-xs font-medium text-gray-700 mb-1">Recomendación de IA:</p>
-                          <p className="text-xs text-gray-600">{progress.recommendation}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Frequency Prompt */}
-                    {currentStep === 'frequency_prompt' && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div className="flex items-start gap-3">
-                          <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                          <div className="flex-1">
-                            <h4 className="font-medium text-yellow-800 mb-2">
-                              ¿Habilitar frecuencias 5GHz?
-                            </h4>
-                            <p className="text-sm text-yellow-700 mb-3">
-                              La IA recomienda habilitar frecuencias 5GHz para mejorar el rendimiento. 
-                              Esto causará que el dispositivo se reinicie temporalmente.
-                            </p>
-                            <div className="flex gap-2">
-                              <Button 
-                                onClick={handleEnableFrequencies}
-                                disabled={loading}
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                <Zap className="h-4 w-4 mr-2" />
-                                Habilitar Frecuencias
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                onClick={handleSkipFrequencies}
-                                disabled={loading}
-                                size="sm"
-                              >
-                                Omitir por ahora
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Results Section */}
-            {analysisResult && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    Resultados del Análisis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Device Info */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-600">IP</p>
-                      <p className="text-lg font-semibold">{analysisResult.ip}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-600">Modelo</p>
-                      <p className="text-lg font-semibold uppercase">{analysisResult.identified_model}</p>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <p className="text-sm font-medium text-gray-600">Estado</p>
-                      <p className="text-lg font-semibold capitalize">{analysisResult.status}</p>
-                    </div>
-                  </div>
-
-                  {/* LLM Analysis */}
-                  {analysisResult.llm_analysis && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
-                        <MessageSquare className="h-4 w-4" />
-                        Análisis de IA
-                      </h4>
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-sm font-medium text-blue-700 mb-1">Resumen:</p>
-                          <p className="text-sm text-blue-600">{analysisResult.llm_analysis.summary}</p>
-                        </div>
-                        
-                        {analysisResult.llm_analysis.recommendations && (
-                          <div>
-                            <p className="text-sm font-medium text-blue-700 mb-2">Recomendaciones:</p>
-                            <ul className="space-y-1">
-                              {analysisResult.llm_analysis.recommendations.map((rec, index) => (
-                                <li key={index} className="text-sm text-blue-600 flex items-start gap-2">
-                                  <span className="text-blue-400 mt-1">•</span>
-                                  {rec}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Device Data */}
-                  {analysisResult.device_data && (
-                    <div>
-                      <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
-                        <Server className="h-4 w-4" />
-                        Datos del Dispositivo
-                      </h4>
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <pre className="text-xs text-gray-600 overflow-x-auto">
-                          {JSON.stringify(analysisResult.device_data, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Feedback Section */}
-                  <div className="border-t pt-4">
-                    <h4 className="font-medium text-gray-800 mb-3">Feedback del Análisis</h4>
-                    {!feedbackSubmitted ? (
-                      <div className="space-y-3">
-                        <Textarea
-                          placeholder="¿Fue útil este análisis? ¿Hay algo que podamos mejorar?"
-                          value={feedbackComment}
-                          onChange={(e) => setFeedbackComment(e.target.value)}
-                          rows={3}
-                        />
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={handleFeedback}
-                            disabled={!feedbackComment.trim()}
-                            size="sm"
-                          >
-                            <ThumbsUp className="h-4 w-4 mr-2" />
-                            Enviar Feedback
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <p className="text-sm text-green-800">✅ Gracias por tu feedback</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Active Executions Panel */}
+            <ExecutionsPanel
+              activeExecutions={activeExecutions}
+              activeCount={activeCount}
+              maxExecutions={maxExecutions}
+              canStartNew={canStartNew}
+              onViewDetails={handleViewDetails}
+              onCancel={handleCancel}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  Historial de Análisis
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5" />
+                    Historial de Análisis
+                  </CardTitle>
+                  {history.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearHistory}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Limpiar Historial
+                    </Button>
+                  )}
+                </div>
+                <CardDescription>
+                  Historial completo de análisis (activos y completados)
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                {history.length > 0 ? (
+                {history.length > 0 || activeExecutions.size > 0 ? (
                   <div className="space-y-3">
-                    {history.map((item) => (
-                      <div key={item.id} className="border rounded-lg p-4">
+                    {/* Active executions first */}
+                    {Array.from(activeExecutions.values()).map((execution) => (
+                      <div
+                        key={execution.id}
+                        className="border rounded-lg p-4 bg-blue-50 border-blue-200"
+                      >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center gap-3">
-                            <span className="font-medium">{item.ip}</span>
-                            <span className="text-sm text-gray-500 uppercase">{item.model}</span>
+                            <Wifi className="h-4 w-4 text-blue-600" />
+                            <span className="font-medium">{execution.deviceIp}</span>
                             <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              item.status === 'success' 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
+                              execution.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : execution.status === 'error'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {execution.status}
+                            </span>
+                            <span className="text-xs text-blue-600 font-medium">Activo</span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {new Date(execution.startedAt).toLocaleString()}
+                          </span>
+                        </div>
+                        {execution.progress && (
+                          <p className="text-sm text-gray-600">{execution.progress.message}</p>
+                        )}
+                        {execution.error && (
+                          <p className="text-sm text-red-600 mt-1">{execution.error}</p>
+                        )}
+                      </div>
+                    ))}
+
+                    {/* Completed history */}
+                    {history.map((item) => (
+                      <div
+                        key={item.id}
+                        className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <Wifi className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium">{item.deviceIp}</span>
+                            {item.result?.identified_model && (
+                              <span className="text-sm text-gray-500 uppercase">
+                                {item.result.identified_model}
+                              </span>
+                            )}
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              item.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : item.status === 'error'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}>
                               {item.status}
                             </span>
                           </div>
                           <span className="text-xs text-gray-500">
-                            {new Date(item.timestamp).toLocaleString()}
+                            {new Date(item.startedAt).toLocaleString()}
                           </span>
                         </div>
-                        {item.llm_analysis?.summary && (
-                          <p className="text-sm text-gray-600">{item.llm_analysis.summary}</p>
+                        {item.result?.llm_analysis?.summary && (
+                          <p className="text-sm text-gray-600">{item.result.llm_analysis.summary}</p>
+                        )}
+                        {item.error && (
+                          <p className="text-sm text-red-600">{item.error}</p>
                         )}
                       </div>
                     ))}
@@ -836,7 +705,7 @@ export default function DeviceAnalysis() {
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <History className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p>No hay análisis anteriores</p>
+                    <p>No hay análisis en el historial</p>
                   </div>
                 )}
               </CardContent>
@@ -990,6 +859,113 @@ export default function DeviceAnalysis() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Execution Details Dialog */}
+        <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Detalles del Análisis
+              </DialogTitle>
+              <DialogDescription>
+                {selectedExecution && `${selectedExecution.deviceIp} - ${new Date(selectedExecution.startedAt).toLocaleString()}`}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedExecution?.result && (
+              <div className="space-y-6">
+                {/* Device Info */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">IP</p>
+                    <p className="text-lg font-semibold">{selectedExecution.result.ip}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Modelo</p>
+                    <p className="text-lg font-semibold uppercase">
+                      {selectedExecution.result.identified_model}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Estado</p>
+                    <p className="text-lg font-semibold capitalize">
+                      {selectedExecution.result.status}
+                    </p>
+                  </div>
+                </div>
+
+                {/* LLM Analysis */}
+                {selectedExecution.result.llm_analysis && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Análisis de IA
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-blue-700 mb-1">Resumen:</p>
+                        <p className="text-sm text-blue-600">
+                          {selectedExecution.result.llm_analysis.summary}
+                        </p>
+                      </div>
+
+                      {selectedExecution.result.llm_analysis.recommendations && (
+                        <div>
+                          <p className="text-sm font-medium text-blue-700 mb-2">Recomendaciones:</p>
+                          <ul className="space-y-1">
+                            {selectedExecution.result.llm_analysis.recommendations.map((rec, index) => (
+                              <li key={index} className="text-sm text-blue-600 flex items-start gap-2">
+                                <span className="text-blue-400 mt-1">•</span>
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Device Data */}
+                {selectedExecution.result.device_data && (
+                  <div>
+                    <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
+                      <Server className="h-4 w-4" />
+                      Datos del Dispositivo
+                    </h4>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <pre className="text-xs text-gray-600 overflow-x-auto">
+                        {JSON.stringify(selectedExecution.result.device_data, null, 2)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feedback Section */}
+                <div className="border-t pt-4">
+                  <h4 className="font-medium text-gray-800 mb-3">Feedback del Análisis</h4>
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="¿Fue útil este análisis? ¿Hay algo que podamos mejorar?"
+                      value={feedbackComment}
+                      onChange={(e) => setFeedbackComment(e.target.value)}
+                      rows={3}
+                    />
+                    <Button
+                      onClick={() => handleFeedback(selectedExecution.id)}
+                      disabled={!feedbackComment.trim()}
+                      size="sm"
+                    >
+                      <ThumbsUp className="h-4 w-4 mr-2" />
+                      Enviar Feedback
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
