@@ -29,6 +29,7 @@ export default function OperatorsManagement() {
     paused_reason: ''
   })
   const [resetCountersDialogOpen, setResetCountersDialogOpen] = useState(false)
+  const [resetCountersLoading, setResetCountersLoading] = useState(false)
   const { toast } = useToast()
 
   const fetchOperators = async () => {
@@ -48,14 +49,18 @@ export default function OperatorsManagement() {
   }
 
   const handleResetCounters = async () => {
-    setResetCountersDialogOpen(false)
+    setResetCountersLoading(true)
 
     try {
-      await adminApi.resetCounters({ performed_by: 'admin' })
+      // Obtener el usuario logueado para el audit trail
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+      await adminApi.resetCounters({ performed_by: user.username || 'admin' })
 
+      setResetCountersDialogOpen(false)
       toast({
         title: 'Contadores Reiniciados',
         description: 'Los contadores de asignación de todos los operadores han sido reiniciados a 0',
+        duration: 5000, // 5 segundos para acciones importantes
       })
 
       // Recargar operadores para ver los contadores actualizados
@@ -66,6 +71,8 @@ export default function OperatorsManagement() {
         description: error.response?.data?.error || 'Error al reiniciar contadores',
         variant: 'destructive'
       })
+    } finally {
+      setResetCountersLoading(false)
     }
   }
 
@@ -625,9 +632,19 @@ export default function OperatorsManagement() {
               type="button"
               variant="destructive"
               onClick={handleResetCounters}
+              disabled={resetCountersLoading}
             >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Sí, Reiniciar Contadores
+              {resetCountersLoading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Reiniciando...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Sí, Reiniciar Contadores
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
