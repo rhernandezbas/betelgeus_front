@@ -89,6 +89,7 @@ export default function Metrics() {
           abiertos: transformedTickets.filter(t => t.is_closed === false && t.exceeded_threshold === false).length,
           vencidos_no_auditados: transformedTickets.filter(t => t.exceeded_threshold === true && !t.audit_requested && !t.audit_status).length,
           vencidos_auditados: transformedTickets.filter(t => t.exceeded_threshold === true && (t.audit_requested || t.audit_status)).length,
+          auditados: transformedTickets.filter(t => t.audit_requested === true || t.audit_status !== null).length,
           total_con_exceeded_threshold: transformedTickets.filter(t => t.exceeded_threshold === true).length
         })
       }
@@ -271,10 +272,23 @@ export default function Metrics() {
       const startDate = new Date(filters.startDate + 'T00:00:00')
       console.log('🔍 [DEBUG] Filtro fecha inicio:', filters.startDate, '→', startDate)
 
+      // Mostrar ejemplos de fechas para diagnosticar
+      if (filtered.length > 0 && filtered.length <= 5) {
+        console.log('🔍 [DEBUG] Primeros tickets con fechas:')
+        filtered.slice(0, 3).forEach(t => {
+          const parsed = parseDate(t.created_at)
+          console.log(`  Ticket #${t.ticket_id}: "${t.created_at}" → ${parsed ? parsed.toISOString() : 'NULL'}`)
+        })
+      }
+
+      let failedParseCount = 0
       filtered = filtered.filter(t => {
         const ticketDate = parseDate(t.created_at)
         if (!ticketDate) {
-          console.warn('🔍 [DEBUG] Fecha no parseada:', t.created_at)
+          failedParseCount++
+          if (failedParseCount <= 3) {
+            console.warn('🔍 [DEBUG] Fecha no parseada:', t.created_at, '(tipo:', typeof t.created_at, ')')
+          }
           return false
         }
         // Comparar solo la fecha (ignorar hora)
@@ -282,6 +296,9 @@ export default function Metrics() {
         const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
         return ticketDateOnly >= startDateOnly
       })
+      if (failedParseCount > 0) {
+        console.warn(`🔍 [DEBUG] Total fechas que no pudieron parsearse: ${failedParseCount}`)
+      }
       console.log(`🔍 [DEBUG] Después de filtro fecha inicio: ${countBefore} → ${filtered.length}`)
     }
     if (filters.endDate) {
@@ -342,6 +359,15 @@ export default function Metrics() {
         return passes
       })
       console.log(`🔍 [DEBUG] Después de filtro Vencido: ${countBefore} → ${filtered.length}`)
+    } else if (filters.status === 'Auditado') {
+      const countBefore = filtered.length
+      console.log('🔍 [DEBUG] Aplicando filtro Auditado (audit_requested=true O audit_status!=null)')
+      // Auditado: tickets que tienen auditoría solicitada o estado de auditoría
+      filtered = filtered.filter(t => {
+        const isAudited = t.audit_requested === true || t.audit_status !== null
+        return isAudited
+      })
+      console.log(`🔍 [DEBUG] Después de filtro Auditado: ${countBefore} → ${filtered.length}`)
     }
 
     // Filtrar por operador
@@ -511,6 +537,7 @@ export default function Metrics() {
                 <option value="Abierto">Abierto</option>
                 <option value="Cerrado">Cerrado</option>
                 <option value="Vencido">Vencido</option>
+                <option value="Auditado">Auditado</option>
               </select>
             </div>
             <div>
