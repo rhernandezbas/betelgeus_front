@@ -47,7 +47,8 @@ export default function Metrics() {
 
       console.log('📊 [DEBUG] Tickets recibidos del backend:', incidents.length)
       if (incidents.length > 0) {
-        console.log('📊 [DEBUG] Primer ticket del backend:', incidents[0])
+        console.log('📊 [DEBUG] Primer ticket del backend (todos los campos):', incidents[0])
+        console.log('📊 [DEBUG] Campos disponibles:', Object.keys(incidents[0]))
       }
 
       // Transformar los datos al formato esperado
