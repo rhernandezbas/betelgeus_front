@@ -65,7 +65,13 @@ export default function Metrics() {
         created_at: incident.created_at,
         response_time: incident.response_time_minutes,
         exceeded_threshold: incident.exceeded_threshold ?? false,  // Usar nullish coalescing
-        recreado: incident.recreado || 0  // Agregar campo recreado
+        recreado: incident.recreado || 0,  // Agregar campo recreado
+        // Campos de auditoría
+        audit_requested: incident.audit_requested ?? false,
+        audit_status: incident.audit_status ?? null,
+        audit_notified: incident.audit_notified ?? false,
+        audit_requested_at: incident.audit_requested_at ?? null,
+        audit_requested_by: incident.audit_requested_by ?? null
       }))
 
       console.log('📊 [DEBUG] Tickets transformados:', transformedTickets.length)
@@ -74,7 +80,9 @@ export default function Metrics() {
         console.log('📊 [DEBUG] Distribución de estados:', {
           cerrados: transformedTickets.filter(t => t.is_closed === true).length,
           abiertos: transformedTickets.filter(t => t.is_closed === false && t.exceeded_threshold === false).length,
-          vencidos: transformedTickets.filter(t => t.is_closed === false && t.exceeded_threshold === true).length
+          vencidos_no_auditados: transformedTickets.filter(t => t.exceeded_threshold === true && !t.audit_requested && !t.audit_status).length,
+          vencidos_auditados: transformedTickets.filter(t => t.exceeded_threshold === true && (t.audit_requested || t.audit_status)).length,
+          total_con_exceeded_threshold: transformedTickets.filter(t => t.exceeded_threshold === true).length
         })
       }
 
@@ -306,9 +314,19 @@ export default function Metrics() {
       console.log(`🔍 [DEBUG] Después de filtro Cerrado: ${countBefore} → ${filtered.length}`)
     } else if (filters.status === 'Vencido') {
       const countBefore = filtered.length
-      console.log('🔍 [DEBUG] Aplicando filtro Vencido (is_closed=false && exceeded_threshold=true)')
-      // Vencido: abierto pero excedió el tiempo de respuesta
-      filtered = filtered.filter(t => t.is_closed === false && t.exceeded_threshold === true)
+      console.log('🔍 [DEBUG] Aplicando filtro Vencido (exceeded_threshold=true && NO auditado)')
+      // Vencido: excedió el tiempo de respuesta (abierto o cerrado) pero NO está auditado
+      filtered = filtered.filter(t => {
+        const isExpired = t.exceeded_threshold === true
+        const isNotAudited = !t.audit_requested && !t.audit_status
+        const passes = isExpired && isNotAudited
+
+        if (!passes && countBefore <= 10) {
+          console.log(`🔍 [DEBUG] Ticket ${t.ticket_id} rechazado: exceeded=${t.exceeded_threshold}, audit_requested=${t.audit_requested}, audit_status=${t.audit_status}`)
+        }
+
+        return passes
+      })
       console.log(`🔍 [DEBUG] Después de filtro Vencido: ${countBefore} → ${filtered.length}`)
     }
 
