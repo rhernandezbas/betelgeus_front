@@ -1,9 +1,9 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  Users, 
-  Clock, 
-  Settings, 
+import { Outlet, Link, useLocation } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Users,
+  Clock,
+  Settings,
   FileText,
   MessageSquare,
   Menu,
@@ -20,10 +20,11 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -41,7 +42,7 @@ const navigation = [
 
 export default function Layout() {
   const location = useLocation()
-  const navigate = useNavigate()
+  const { logout } = useAuth()
   const { toast } = useToast()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -49,16 +50,14 @@ export default function Layout() {
   const handleLogout = async () => {
     try {
       await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, { withCredentials: true })
-      sessionStorage.clear()
       toast({
         title: 'Sesión cerrada',
         description: 'Has cerrado sesión exitosamente'
       })
-      navigate('/login')
+      logout()
     } catch (error) {
       console.error('Error al cerrar sesión:', error)
-      sessionStorage.clear()
-      navigate('/login')
+      logout() // Limpiar sesión local aunque falle el backend
     }
   }
 

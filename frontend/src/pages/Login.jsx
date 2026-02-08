@@ -2,22 +2,24 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
-import { LogIn, User, Lock, AlertCircle } from 'lucide-react'
+import { LogIn, User, Lock } from 'lucide-react'
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE_URL = import.meta.env.VITE_API_URL || ''
 
 export default function Login() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { login } = useAuth()
   const { toast } = useToast()
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    
+
     if (!username || !password) {
       toast({
         title: 'Error',
@@ -37,10 +39,9 @@ export default function Login() {
       })
 
       const user = response.data.user
-      
-      // Guardar usuario en sessionStorage
-      sessionStorage.setItem('user', JSON.stringify(user))
-      sessionStorage.setItem('isAuthenticated', 'true')
+
+      // Guardar sesión con expiración usando el contexto
+      login(user) // Usa 1 hora por defecto
 
       toast({
         title: 'Login exitoso',

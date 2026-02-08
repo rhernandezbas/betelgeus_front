@@ -1,10 +1,10 @@
 import { Navigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function ProtectedRoute({ children, requiredRole }) {
-  const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+  const { isAuthenticated, user } = useAuth()
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
   }
 
@@ -21,10 +21,9 @@ export function ProtectedRoute({ children, requiredRole }) {
 }
 
 export function PublicRoute({ children }) {
-  const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true'
-  const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+  const { isAuthenticated, user } = useAuth()
 
-  if (isAuthenticated) {
+  if (isAuthenticated && user) {
     // Redirigir según el rol
     if (user.role === 'admin') {
       return <Navigate to="/" replace />
