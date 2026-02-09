@@ -200,10 +200,50 @@ export default function NOCDashboard() {
     }
   }
 
-  const handleCreatePostMortem = (event) => {
-    setSelectedEvent(event)
-    setEditingPostMortem(null)
-    setPostMortemEditorOpen(true)
+  const handleCreatePostMortem = async (event) => {
+    try {
+      // Crear post-mortem automáticamente con datos del evento
+      const pmData = {
+        alert_event_id: event.id,
+        title: `Post-Mortem: ${event.title}`,
+        summary: event.description || `Análisis del evento ${event.event_type}`,
+        root_cause: null,
+        author: user?.username || user?.name || 'Sistema',
+        incident_start: event.created_at,
+        incident_end: event.resolved_at || null,
+        timeline_events: [
+          {
+            time: new Date(event.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+            event: `Evento detectado: ${event.title}`,
+            actor: 'Sistema NOC'
+          }
+        ],
+        preventive_actions: [],
+        action_items: [],
+        custom_data: {
+          event_id: event.id,
+          event_type: event.event_type,
+          severity: event.severity,
+          site_id: event.site_id
+        }
+      }
+
+      await createPostMortem(pmData)
+
+      toast({
+        title: 'Post-Mortem Creado',
+        description: `Post-mortem creado automáticamente para el evento #${event.id}`
+      })
+
+      // Cambiar a la pestaña de post-mortems
+      setActiveTab('postmortems')
+    } catch (error) {
+      toast({
+        title: 'Error al Crear Post-Mortem',
+        description: error.message,
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleEditPostMortem = (pm) => {
