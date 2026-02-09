@@ -28,7 +28,6 @@ import {
   BarChart3,
   Lock,
   ShieldAlert,
-  AlertCircle,
   XCircle
 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -173,6 +172,22 @@ export default function NOCDashboard() {
     } catch (error) {
       toast({
         title: 'Error',
+        description: error.message,
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleWhatsAppEvent = async (type, eventId) => {
+    try {
+      await testWhatsApp(type, null, eventId)
+      toast({
+        title: 'WhatsApp Enviado',
+        description: `Mensaje de tipo "${type}" enviado correctamente`
+      })
+    } catch (error) {
+      toast({
+        title: 'Error al Enviar WhatsApp',
         description: error.message,
         variant: 'destructive'
       })
@@ -476,6 +491,7 @@ export default function NOCDashboard() {
                   onResolve={handleResolveEvent}
                   onDelete={handleDeleteEvent}
                   onCreatePostMortem={handleCreatePostMortem}
+                  onWhatsApp={handleWhatsAppEvent}
                 />
               ))}
             </div>

@@ -335,10 +335,11 @@ export const useNOCData = () => {
 
   // ==================== WHATSAPP ====================
 
-  const testWhatsApp = useCallback(async (type = 'complete', siteId = null) => {
+  const testWhatsApp = useCallback(async (type = 'complete', siteId = null, eventId = null) => {
     try {
       const data = { type }
       if (siteId) data.site_id = siteId
+      if (eventId) data.event_id = eventId
       return await nocApi.whatsapp.testNotification(data)
     } catch (err) {
       console.error('Error testing WhatsApp:', err)

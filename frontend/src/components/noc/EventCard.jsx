@@ -23,7 +23,9 @@ import {
   ChevronUp,
   XCircle,
   AlertTriangle,
-  Info
+  Info,
+  MessageSquare,
+  Send
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -75,12 +77,15 @@ export default function EventCard({
   onResolve,
   onDelete,
   onCreatePostMortem,
+  onWhatsApp,
   compact = false
 }) {
   const [expanded, setExpanded] = useState(false)
   const [acknowledgeDialogOpen, setAcknowledgeDialogOpen] = useState(false)
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
+  const [whatsappType, setWhatsappType] = useState('complete')
   const [formData, setFormData] = useState({ by: '', note: '' })
   const [loading, setLoading] = useState(false)
 
@@ -121,6 +126,16 @@ export default function EventCard({
     try {
       await onDelete?.(event.id)
       setDeleteDialogOpen(false)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleWhatsApp = async () => {
+    setLoading(true)
+    try {
+      await onWhatsApp?.(whatsappType, event.id)
+      setWhatsappDialogOpen(false)
     } finally {
       setLoading(false)
     }
@@ -259,14 +274,27 @@ export default function EventCard({
               </Button>
             )}
 
-            {event.status === 'resolved' && onCreatePostMortem && (
+            {(event.status === 'acknowledged' || event.status === 'resolved') && onCreatePostMortem && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => onCreatePostMortem?.(event)}
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
               >
                 <FileText className="h-4 w-4 mr-1" />
                 Post-Mortem
+              </Button>
+            )}
+
+            {onWhatsApp && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setWhatsappDialogOpen(true)}
+                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              >
+                <MessageSquare className="h-4 w-4 mr-1" />
+                WhatsApp
               </Button>
             )}
 
@@ -312,7 +340,10 @@ export default function EventCard({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAcknowledgeDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setAcknowledgeDialogOpen(false)
+              setFormData({ by: '', note: '' })
+            }}>
               Cancelar
             </Button>
             <Button
@@ -356,7 +387,10 @@ export default function EventCard({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setResolveDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setResolveDialogOpen(false)
+              setFormData({ by: '', note: '' })
+            }}>
               Cancelar
             </Button>
             <Button
@@ -389,6 +423,103 @@ export default function EventCard({
               disabled={loading}
             >
               {loading ? 'Eliminando...' : 'Eliminar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp Dialog */}
+      <Dialog open={whatsappDialogOpen} onOpenChange={setWhatsappDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar Notificación WhatsApp</DialogTitle>
+            <DialogDescription>
+              Selecciona el tipo de mensaje a enviar al número configurado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <Label>Tipo de Mensaje</Label>
+              <div className="space-y-2">
+                <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    id="whatsapp-complete"
+                    name="whatsapp-type"
+                    value="complete"
+                    checked={whatsappType === 'complete'}
+                    onChange={(e) => setWhatsappType(e.target.value)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="whatsapp-complete" className="cursor-pointer flex-1">
+                    <div className="font-medium">Completo</div>
+                    <div className="text-sm text-muted-foreground">
+                      Incluye todos los detalles del evento
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    id="whatsapp-summary"
+                    name="whatsapp-type"
+                    value="summary"
+                    checked={whatsappType === 'summary'}
+                    onChange={(e) => setWhatsappType(e.target.value)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="whatsapp-summary" className="cursor-pointer flex-1">
+                    <div className="font-medium">Resumen</div>
+                    <div className="text-sm text-muted-foreground">
+                      Resumen breve del evento
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="radio"
+                    id="whatsapp-recovery"
+                    name="whatsapp-type"
+                    value="recovery"
+                    checked={whatsappType === 'recovery'}
+                    onChange={(e) => setWhatsappType(e.target.value)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="whatsapp-recovery" className="cursor-pointer flex-1">
+                    <div className="font-medium">Recuperación</div>
+                    <div className="text-sm text-muted-foreground">
+                      Notificación de recuperación del servicio
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  El mensaje se enviará al número configurado en el sistema.
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setWhatsappDialogOpen(false)
+              setWhatsappType('complete')
+            }}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleWhatsApp}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Send className="h-4 w-4 mr-1" />
+              {loading ? 'Enviando...' : 'Enviar WhatsApp'}
             </Button>
           </DialogFooter>
         </DialogContent>
