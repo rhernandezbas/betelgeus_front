@@ -71,10 +71,16 @@ export const PERMISSION_GROUPS = {
  * @returns {boolean}
  */
 export function hasPermission(user, permission) {
-  if (!user) return false
+  if (!user) {
+    console.log('[Permissions] No user provided')
+    return false
+  }
 
   // Admin role has all permissions
-  if (user.role === 'admin') return true
+  if (user.role === 'admin') {
+    console.log('[Permissions] User is admin, granting all permissions')
+    return true
+  }
 
   // Get permission config
   const permConfig = PERMISSIONS[permission]
@@ -82,10 +88,13 @@ export function hasPermission(user, permission) {
 
   // If permission is explicitly set, use that value
   if (user[permission] !== undefined) {
-    return user[permission] === true
+    const hasIt = user[permission] === true
+    console.log(`[Permissions] ${permission}: ${hasIt} (explicit value: ${user[permission]})`)
+    return hasIt
   }
 
   // Otherwise use default value
+  console.log(`[Permissions] ${permission}: ${defaultValue} (using default)`)
   return defaultValue
 }
 
