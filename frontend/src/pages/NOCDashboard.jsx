@@ -181,7 +181,7 @@ export default function NOCDashboard() {
 
   const handleWhatsAppEvent = async (type, eventId) => {
     try {
-      const result = await sendWhatsAppNotification(eventId, type)
+      await sendWhatsAppNotification(eventId, type)
       const typeLabels = {
         complete: 'Completo',
         summary: 'Resumen',
@@ -202,6 +202,17 @@ export default function NOCDashboard() {
 
   const handleCreatePostMortem = async (event) => {
     try {
+      // Calculate downtime if resolved
+      let downtimeMinutes = null
+      if (event.resolved_at && event.created_at) {
+        const start = new Date(event.created_at)
+        const end = new Date(event.resolved_at)
+        const diffMs = end - start
+        if (diffMs > 0) {
+          downtimeMinutes = Math.floor(diffMs / 60000) // Convert to minutes
+        }
+      }
+
       // Crear post-mortem automáticamente con datos del evento
       const pmData = {
         alert_event_id: event.id,
@@ -211,6 +222,10 @@ export default function NOCDashboard() {
         author: user?.username || user?.name || 'Sistema',
         incident_start: event.created_at,
         incident_end: event.resolved_at || null,
+        detection_time: event.created_at, // When the event was detected
+        response_time: event.acknowledged_at || event.created_at, // When someone acknowledged or created_at as fallback
+        resolution_time: event.resolved_at || null, // When it was resolved
+        downtime_minutes: downtimeMinutes,
         timeline_events: [
           {
             time: new Date(event.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),

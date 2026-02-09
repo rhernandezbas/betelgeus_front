@@ -217,21 +217,68 @@ export function EventsByTypeChart({ events }) {
   )
 }
 
-// Uptime Trend Chart (Mock data - would need historical API)
-export function UptimeTrendChart() {
-  // Mock data for demonstration - in production, fetch from API
+// Uptime Trend Chart (Real data from stats)
+export function UptimeTrendChart({ stats }) {
   const data = useMemo(() => {
-    const now = new Date()
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(now)
-      date.setDate(date.getDate() - (6 - i))
+    const STORAGE_KEY = 'noc_uptime_history'
+    const MAX_POINTS = 24 // Keep last 24 data points (12 hours with 30s refresh)
+
+    // Get stored history
+    let history = []
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      history = stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.error('Error loading uptime history:', error)
+      history = []
+    }
+
+    // Add current data point if stats available
+    if (stats && stats.uptimePercent !== undefined) {
+      const now = new Date()
+      const newPoint = {
+        timestamp: now.toISOString(),
+        uptime: parseFloat(stats.uptimePercent),
+        sitesDown: stats.sitesDown || 0,
+        activeEvents: stats.totalActiveEvents || 0
+      }
+
+      // Check if we should add this point (avoid duplicates within 1 minute)
+      const shouldAdd = history.length === 0 ||
+        (now - new Date(history[history.length - 1].timestamp)) > 60000
+
+      if (shouldAdd) {
+        history.push(newPoint)
+
+        // Keep only last MAX_POINTS
+        if (history.length > MAX_POINTS) {
+          history = history.slice(-MAX_POINTS)
+        }
+
+        // Save to localStorage
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
+        } catch (error) {
+          console.error('Error saving uptime history:', error)
+        }
+      }
+    }
+
+    // Format for chart (show last 12 points max)
+    return history.slice(-12).map(point => {
+      const date = new Date(point.timestamp)
       return {
-        date: date.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' }),
-        uptime: 95 + Math.random() * 5,
-        incidents: Math.floor(Math.random() * 5)
+        time: date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+        uptime: point.uptime,
+        sites: point.sitesDown,
+        events: point.activeEvents
       }
     })
-  }, [])
+  }, [stats])
+
+  // Calculate min/max for Y axis domain
+  const minUptime = data.length > 0 ? Math.min(...data.map(d => d.uptime)) : 90
+  const yAxisMin = Math.max(0, Math.floor(minUptime / 10) * 10 - 10)
 
   return (
     <Card>
@@ -241,27 +288,38 @@ export function UptimeTrendChart() {
           Tendencia de Uptime
         </CardTitle>
         <CardDescription>
-          Últimos 7 días
+          {data.length > 0 ? `Últimos ${data.length} puntos de datos` : 'Recopilando datos...'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
-          <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis domain={[90, 100]} tickFormatter={(v) => `${v}%`} />
-            <Tooltip
-              formatter={(value) => [`${value.toFixed(2)}%`, 'Uptime']}
-            />
-            <Area
-              type="monotone"
-              dataKey="uptime"
-              stroke="#10b981"
-              fill="#10b98140"
-              strokeWidth={2}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        {data.length === 0 ? (
+          <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+            Esperando datos... El gráfico se construirá con el tiempo
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="time" tick={{ fontSize: 12 }} />
+              <YAxis domain={[yAxisMin, 100]} tickFormatter={(v) => `${v}%`} />
+              <Tooltip
+                formatter={(value, name) => {
+                  if (name === 'uptime') return [`${value.toFixed(2)}%`, 'Uptime']
+                  if (name === 'sites') return [value, 'Sites Caídos']
+                  if (name === 'events') return [value, 'Eventos Activos']
+                  return [value, name]
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="uptime"
+                stroke="#10b981"
+                fill="#10b98140"
+                strokeWidth={2}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   )
@@ -333,14 +391,46 @@ export function MTTRStats({ postMortems }) {
       return { avgMTTR: 0, avgDetection: 0, avgResponse: 0, count: 0 }
     }
 
-    const validPMs = postMortems.filter(pm => pm.downtime_minutes)
+    // Helper to calculate time difference in minutes
+    const calculateTimeDiff = (startTime, endTime) => {
+      if (!startTime || !endTime) return null
+      const start = new Date(startTime)
+      const end = new Date(endTime)
+      const diffMs = end - start
+      if (diffMs < 0) return null
+      return Math.floor(diffMs / 60000) // Convert to minutes
+    }
+
+    // Filter post-mortems that have the necessary timestamps
+    const validPMs = postMortems.filter(pm =>
+      pm.incident_start && pm.detection_time && pm.response_time
+    )
+
     if (validPMs.length === 0) {
       return { avgMTTR: 0, avgDetection: 0, avgResponse: 0, count: 0 }
     }
 
-    const avgMTTR = validPMs.reduce((acc, pm) => acc + (pm.downtime_minutes || 0), 0) / validPMs.length
-    const avgDetection = validPMs.reduce((acc, pm) => acc + (pm.detection_time || 0), 0) / validPMs.length
-    const avgResponse = validPMs.reduce((acc, pm) => acc + (pm.response_time || 0), 0) / validPMs.length
+    // Calculate average MTTR (downtime)
+    const pmWithDowntime = validPMs.filter(pm => pm.downtime_minutes)
+    const avgMTTR = pmWithDowntime.length > 0
+      ? pmWithDowntime.reduce((acc, pm) => acc + pm.downtime_minutes, 0) / pmWithDowntime.length
+      : 0
+
+    // Calculate average detection time (incident_start → detection_time)
+    const detectionTimes = validPMs
+      .map(pm => calculateTimeDiff(pm.incident_start, pm.detection_time))
+      .filter(t => t !== null)
+    const avgDetection = detectionTimes.length > 0
+      ? detectionTimes.reduce((acc, t) => acc + t, 0) / detectionTimes.length
+      : 0
+
+    // Calculate average response time (detection_time → response_time)
+    const responseTimes = validPMs
+      .map(pm => calculateTimeDiff(pm.detection_time, pm.response_time))
+      .filter(t => t !== null)
+    const avgResponse = responseTimes.length > 0
+      ? responseTimes.reduce((acc, t) => acc + t, 0) / responseTimes.length
+      : 0
 
     return {
       avgMTTR: Math.round(avgMTTR),
