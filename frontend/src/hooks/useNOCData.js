@@ -335,9 +335,9 @@ export const useNOCData = () => {
 
   // ==================== WHATSAPP ====================
 
-  const sendWhatsAppNotification = useCallback(async (eventId) => {
+  const sendWhatsAppNotification = useCallback(async (eventId, type = 'complete') => {
     try {
-      return await nocApi.whatsapp.notifyEvent(eventId)
+      return await nocApi.whatsapp.notifyEvent(eventId, type)
     } catch (err) {
       console.error('Error sending WhatsApp notification:', err)
       throw err

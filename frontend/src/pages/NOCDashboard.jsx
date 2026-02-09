@@ -181,10 +181,15 @@ export default function NOCDashboard() {
 
   const handleWhatsAppEvent = async (type, eventId) => {
     try {
-      const result = await sendWhatsAppNotification(eventId)
+      const result = await sendWhatsAppNotification(eventId, type)
+      const typeLabels = {
+        complete: 'Completo',
+        summary: 'Resumen',
+        recovery: 'Recuperación'
+      }
       toast({
         title: 'Notificación WhatsApp Enviada',
-        description: `Tipo: ${type} - ${result.notifications_sent || 2} notificaciones enviadas`
+        description: `Mensaje tipo "${typeLabels[type]}" enviado correctamente`
       })
     } catch (error) {
       toast({
