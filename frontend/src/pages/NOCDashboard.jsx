@@ -27,8 +27,11 @@ import {
   Plus,
   BarChart3,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  AlertCircle,
+  XCircle
 } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 // Components
 import StatsCards from '@/components/noc/StatsCards'
@@ -91,7 +94,8 @@ export default function NOCDashboard() {
     autoRefresh,
     setAutoRefresh,
     lastUpdate,
-    refreshAll
+    refreshAll,
+    error
   } = useNOCData()
 
   const { toast } = useToast()
@@ -357,6 +361,31 @@ export default function NOCDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Error Alert - Shows when API is unavailable */}
+      {error && (
+        <Alert variant="destructive" className="border-red-300 bg-red-50">
+          <XCircle className="h-5 w-5" />
+          <AlertTitle className="flex items-center gap-2">
+            Error de Conexión con API de Alertas
+          </AlertTitle>
+          <AlertDescription className="mt-2">
+            <p className="mb-2">{error}</p>
+            <p className="text-sm text-muted-foreground">
+              El servicio de alertas (UISP) no está disponible. Algunas funcionalidades pueden no estar operativas.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={refreshAll}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reintentar Conexión
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Stats Cards */}
       <StatsCards stats={stats} loading={sitesLoading} />
