@@ -24,11 +24,21 @@ const statusConfig = {
 
 // Format duration helper
 const formatDuration = (minutes) => {
-  if (!minutes) return '-'
+  if (!minutes || minutes === 0) return '-'
   if (minutes < 60) return `${minutes}m`
   const hours = Math.floor(minutes / 60)
   const mins = minutes % 60
   return `${hours}h ${mins}m`
+}
+
+// Calculate time difference in minutes between two timestamps
+const calculateTimeDiff = (startTime, endTime) => {
+  if (!startTime || !endTime) return null
+  const start = new Date(startTime)
+  const end = new Date(endTime)
+  const diffMs = end - start
+  if (diffMs < 0) return null
+  return Math.floor(diffMs / 60000) // Convert to minutes
 }
 
 export default function PostMortemCard({
@@ -110,19 +120,19 @@ export default function PostMortemCard({
           </div>
           <div className="text-center p-2 rounded bg-blue-50">
             <p className="text-lg font-bold text-blue-600">
-              {formatDuration(postMortem.detection_time)}
+              {formatDuration(calculateTimeDiff(postMortem.incident_start, postMortem.detection_time))}
             </p>
             <p className="text-xs text-muted-foreground">Detección</p>
           </div>
           <div className="text-center p-2 rounded bg-yellow-50">
             <p className="text-lg font-bold text-yellow-600">
-              {formatDuration(postMortem.response_time)}
+              {formatDuration(calculateTimeDiff(postMortem.detection_time, postMortem.response_time))}
             </p>
             <p className="text-xs text-muted-foreground">Respuesta</p>
           </div>
           <div className="text-center p-2 rounded bg-green-50">
             <p className="text-lg font-bold text-green-600">
-              {formatDuration(postMortem.resolution_time)}
+              {formatDuration(calculateTimeDiff(postMortem.response_time, postMortem.resolution_time))}
             </p>
             <p className="text-xs text-muted-foreground">Resolución</p>
           </div>

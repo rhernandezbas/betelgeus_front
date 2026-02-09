@@ -171,7 +171,23 @@ export const useNOCData = () => {
     setPostMortemsLoading(true)
     try {
       const data = await nocApi.postMortem.getAll(params)
-      setPostMortems(Array.isArray(data) ? data : data.post_mortems || [])
+      const rawPostMortems = Array.isArray(data) ? data : data.post_mortems || []
+
+      // Parse JSON string fields to arrays (backend returns them as strings)
+      const parsedPostMortems = rawPostMortems.map(pm => ({
+        ...pm,
+        timeline_events: typeof pm.timeline_events === 'string' ? JSON.parse(pm.timeline_events || '[]') : pm.timeline_events || [],
+        response_actions: typeof pm.response_actions === 'string' ? JSON.parse(pm.response_actions || '[]') : pm.response_actions || [],
+        preventive_actions: typeof pm.preventive_actions === 'string' ? JSON.parse(pm.preventive_actions || '[]') : pm.preventive_actions || [],
+        action_items: typeof pm.action_items === 'string' ? JSON.parse(pm.action_items || '[]') : pm.action_items || [],
+        reviewers: typeof pm.reviewers === 'string' ? JSON.parse(pm.reviewers || '[]') : pm.reviewers || [],
+        contributors: typeof pm.contributors === 'string' ? JSON.parse(pm.contributors || '[]') : pm.contributors || [],
+        tags: typeof pm.tags === 'string' ? JSON.parse(pm.tags || '[]') : pm.tags || [],
+        related_incidents: typeof pm.related_incidents === 'string' ? JSON.parse(pm.related_incidents || '[]') : pm.related_incidents || [],
+        external_links: typeof pm.external_links === 'string' ? JSON.parse(pm.external_links || '[]') : pm.external_links || []
+      }))
+
+      setPostMortems(parsedPostMortems)
       setError(null)
     } catch (err) {
       console.error('Error fetching post-mortems:', err)

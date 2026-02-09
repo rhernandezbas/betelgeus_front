@@ -144,9 +144,8 @@ export const pollingApi = {
 
 export const whatsappApi = {
   // Enviar notificación para un evento específico
-  notifyEvent: (eventId, type = 'complete') => nocFetch(`/events/${eventId}/notify`, {
-    method: 'POST',
-    body: JSON.stringify({ type })
+  notifyEvent: (eventId, type = 'complete') => nocFetch(`/events/${eventId}/notify?message_type=${type}`, {
+    method: 'POST'
   }),
 
   // Test de notificación (legacy)
