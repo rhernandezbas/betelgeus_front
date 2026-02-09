@@ -49,10 +49,12 @@ export default function PostMortemCard({
   onReview,
   onReport,
   onDelete,
+  currentUser,
   compact = false
 }) {
   const status = statusConfig[postMortem.status] || statusConfig.draft
   const StatusIcon = status.icon
+  const isAdmin = currentUser?.role === 'admin'
 
   if (compact) {
     return (
@@ -103,6 +105,17 @@ export default function PostMortemCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        {/* Status Info */}
+        <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+          <div className="flex items-center gap-2">
+            <StatusIcon className="h-4 w-4" />
+            <span className="text-sm font-medium">Estado: {status.label}</span>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {postMortem.author && `Autor: ${postMortem.author}`}
+          </div>
+        </div>
+
         {/* Summary */}
         {postMortem.summary && (
           <p className="text-sm text-muted-foreground line-clamp-2">
@@ -177,14 +190,16 @@ export default function PostMortemCard({
             Ver
           </Button>
 
-          {(postMortem.status === 'draft' || postMortem.status === 'in_progress') && (
+          {/* Editar disponible para todos (excepto reviewed) */}
+          {postMortem.status !== 'reviewed' && (
             <Button size="sm" variant="outline" onClick={() => onEdit?.(postMortem)}>
               <Edit className="h-4 w-4 mr-1" />
               Editar
             </Button>
           )}
 
-          {postMortem.status === 'in_progress' && (
+          {/* Completar solo para admin y cuando no está completed/reviewed */}
+          {isAdmin && (postMortem.status === 'draft' || postMortem.status === 'in_progress') && (
             <Button
               size="sm"
               onClick={() => onComplete?.(postMortem.id)}
@@ -195,7 +210,8 @@ export default function PostMortemCard({
             </Button>
           )}
 
-          {postMortem.status === 'completed' && (
+          {/* Marcar Revisado solo para admin */}
+          {isAdmin && postMortem.status === 'completed' && (
             <Button
               size="sm"
               variant="outline"

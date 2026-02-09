@@ -634,6 +634,7 @@ export default function NOCDashboard() {
                       onReview={handleReviewPostMortem}
                       onReport={handleDownloadReport}
                       onDelete={handleDeletePostMortem}
+                      currentUser={user}
                     />
                   ))}
                 </div>
