@@ -405,10 +405,11 @@ export const useNOCData = () => {
       fetchSites(),
       fetchOutageSites(),
       fetchActiveEvents(),
+      fetchPostMortems(),
       fetchPollingStatus(),
       fetchHealth()
     ])
-  }, [fetchSites, fetchOutageSites, fetchActiveEvents, fetchPollingStatus, fetchHealth])
+  }, [fetchSites, fetchOutageSites, fetchActiveEvents, fetchPostMortems, fetchPollingStatus, fetchHealth])
 
   // ==================== AUTO-REFRESH EFFECT ====================
 
