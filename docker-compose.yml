@@ -11,6 +11,7 @@ services:
     restart: unless-stopped
     networks:
       - betelgeuse-network
+      - backend-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:80/"]
       interval: 30s
@@ -33,3 +34,8 @@ services:
 networks:
   betelgeuse-network:
     driver: bridge
+  # External network to connect to backend - create if not exists:
+  # docker network create backend-network
+  backend-network:
+    external: true
+    name: splynx-tickets_app-network

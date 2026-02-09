@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   Eye,
   CheckCircle,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -52,6 +53,7 @@ export default function SiteCard({
   onViewDetails,
   onAcknowledge,
   onWhatsApp,
+  onCreatePostMortem,
   compact = false
 }) {
   const [downtime, setDowntime] = useState(calculateDowntime(site.last_checked))
@@ -215,6 +217,16 @@ export default function SiteCard({
               <MessageSquare className="h-4 w-4" />
             </Button>
           )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onCreatePostMortem?.(site)}
+            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            Post-Mortem
+          </Button>
         </div>
       </CardContent>
     </Card>

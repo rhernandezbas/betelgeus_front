@@ -78,6 +78,7 @@ export default function NOCDashboard() {
     postMortemsLoading,
     fetchPostMortems,
     createPostMortem,
+    createPostMortemForSite,
     updatePostMortem,
     completePostMortem,
     reviewPostMortem,
@@ -461,6 +462,22 @@ export default function NOCDashboard() {
                   onViewDetails={handleViewSiteDetails}
                   onAcknowledge={handleAcknowledgeSite}
                   onWhatsApp={handleWhatsAppSite}
+                  onCreatePostMortem={async (site) => {
+                    try {
+                      await createPostMortemForSite(site)
+                      toast({
+                        title: 'Post-Mortem Creado',
+                        description: `Se creó un post-mortem para ${site.site_name}`
+                      })
+                      setActiveTab('postmortem')
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: error.message,
+                        variant: 'destructive'
+                      })
+                    }
+                  }}
                 />
               ))}
             </div>

@@ -183,7 +183,29 @@ export const useNOCData = () => {
 
   const createPostMortem = useCallback(async (pmData) => {
     try {
-      const result = await nocApi.postMortem.create(pmData)
+      // Clean data before sending - convert empty strings to null
+      const cleanData = {
+        ...pmData,
+        alert_event_id: pmData.alert_event_id || null,
+        title: pmData.title || 'Post-Mortem Sin Título',
+        summary: pmData.summary || null,
+        root_cause: pmData.root_cause || null,
+        author: pmData.author || null,
+        lessons_learned: pmData.lessons_learned || null,
+        // Filter out empty timeline events
+        timeline_events: (pmData.timeline_events || []).filter(
+          item => item.time || item.event || item.actor
+        ),
+        // Filter out empty preventive actions
+        preventive_actions: (pmData.preventive_actions || []).filter(
+          item => item.action
+        ),
+        // Filter out empty action items
+        action_items: (pmData.action_items || []).filter(
+          item => item.item
+        )
+      }
+      const result = await nocApi.postMortem.create(cleanData)
       await fetchPostMortems()
       return result
     } catch (err) {
@@ -191,6 +213,34 @@ export const useNOCData = () => {
       throw err
     }
   }, [fetchPostMortems])
+
+  // Auto-create post-mortem for site outage
+  const createPostMortemForSite = useCallback(async (site) => {
+    const pmData = {
+      title: `Post-Mortem: Caída de ${site.site_name}`,
+      summary: `Site ${site.site_name} experimentó una caída con ${site.device_outage_count}/${site.device_count} dispositivos afectados (${site.outage_percentage?.toFixed(1)}% de caída).`,
+      root_cause: null,
+      author: null,
+      incident_start: new Date().toISOString(),
+      timeline_events: [
+        {
+          time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          event: `Detectada caída del site ${site.site_name}`,
+          actor: 'Sistema NOC'
+        }
+      ],
+      preventive_actions: [],
+      action_items: [],
+      custom_data: {
+        site_id: site.site_id,
+        site_name: site.site_name,
+        device_count: site.device_count,
+        device_outage_count: site.device_outage_count,
+        outage_percentage: site.outage_percentage
+      }
+    }
+    return createPostMortem(pmData)
+  }, [createPostMortem])
 
   const updatePostMortem = useCallback(async (pmId, pmData) => {
     try {
@@ -391,6 +441,7 @@ export const useNOCData = () => {
     postMortemsLoading,
     fetchPostMortems,
     createPostMortem,
+    createPostMortemForSite,
     updatePostMortem,
     completePostMortem,
     reviewPostMortem,
