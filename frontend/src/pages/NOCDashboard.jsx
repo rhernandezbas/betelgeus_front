@@ -179,12 +179,12 @@ export default function NOCDashboard() {
     }
   }
 
-  const handleWhatsAppEvent = async (eventId) => {
+  const handleWhatsAppEvent = async (type, eventId) => {
     try {
       const result = await sendWhatsAppNotification(eventId)
       toast({
-        title: 'Notificaciones Enviadas',
-        description: `${result.notifications_sent || 2} notificaciones enviadas correctamente`
+        title: 'Notificación WhatsApp Enviada',
+        description: `Tipo: ${type} - ${result.notifications_sent || 2} notificaciones enviadas`
       })
     } catch (error) {
       toast({
