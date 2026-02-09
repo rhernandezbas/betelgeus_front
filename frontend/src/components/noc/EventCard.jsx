@@ -86,7 +86,6 @@ export default function EventCard({
   const [resolveDialogOpen, setResolveDialogOpen] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
-  const [whatsappType, setWhatsappType] = useState('complete')
   const [formData, setFormData] = useState({ by: currentUser?.username || currentUser?.name || '', note: '' })
   const [loading, setLoading] = useState(false)
 
@@ -135,7 +134,7 @@ export default function EventCard({
   const handleWhatsApp = async () => {
     setLoading(true)
     try {
-      await onWhatsApp?.(whatsappType, event.id)
+      await onWhatsApp?.(event.id)
       setWhatsappDialogOpen(false)
     } finally {
       setLoading(false)
@@ -441,83 +440,51 @@ export default function EventCard({
           <DialogHeader>
             <DialogTitle>Enviar Notificación WhatsApp</DialogTitle>
             <DialogDescription>
-              Selecciona el tipo de mensaje a enviar al número configurado.
+              Se enviará una notificación automática para este evento.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-3">
-              <Label>Tipo de Mensaje</Label>
+            {/* Event Info */}
+            <div className="border rounded-lg p-4 bg-gray-50">
               <div className="space-y-2">
-                <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="whatsapp-complete"
-                    name="whatsapp-type"
-                    value="complete"
-                    checked={whatsappType === 'complete'}
-                    onChange={(e) => setWhatsappType(e.target.value)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="whatsapp-complete" className="cursor-pointer flex-1">
-                    <div className="font-medium">Completo</div>
-                    <div className="text-sm text-muted-foreground">
-                      Incluye todos los detalles del evento
-                    </div>
-                  </label>
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Evento:</span>
+                  <p className="text-sm font-semibold mt-1">{event.title}</p>
                 </div>
-
-                <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="whatsapp-summary"
-                    name="whatsapp-type"
-                    value="summary"
-                    checked={whatsappType === 'summary'}
-                    onChange={(e) => setWhatsappType(e.target.value)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="whatsapp-summary" className="cursor-pointer flex-1">
-                    <div className="font-medium">Resumen</div>
-                    <div className="text-sm text-muted-foreground">
-                      Resumen breve del evento
-                    </div>
-                  </label>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="radio"
-                    id="whatsapp-recovery"
-                    name="whatsapp-type"
-                    value="recovery"
-                    checked={whatsappType === 'recovery'}
-                    onChange={(e) => setWhatsappType(e.target.value)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="whatsapp-recovery" className="cursor-pointer flex-1">
-                    <div className="font-medium">Recuperación</div>
-                    <div className="text-sm text-muted-foreground">
-                      Notificación de recuperación del servicio
-                    </div>
-                  </label>
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Estado:</span>
+                  <span className="text-sm ml-2 capitalize">{statusConfig[event.status]?.label || event.status}</span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  El mensaje se enviará al número configurado en el sistema.
+            {/* Info Messages */}
+            <div className="space-y-2">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-medium mb-1">Se enviarán automáticamente:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Mensaje completo con todos los detalles</li>
+                      <li>Resumen breve del evento</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-amber-800">
+                    El mensaje se enviará al número configurado en el sistema.
+                  </div>
                 </div>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setWhatsappDialogOpen(false)
-              setWhatsappType('complete')
-            }}>
+            <Button variant="outline" onClick={() => setWhatsappDialogOpen(false)}>
               Cancelar
             </Button>
             <Button
@@ -526,7 +493,7 @@ export default function EventCard({
               className="bg-blue-600 hover:bg-blue-700"
             >
               <Send className="h-4 w-4 mr-1" />
-              {loading ? 'Enviando...' : 'Enviar WhatsApp'}
+              {loading ? 'Enviando...' : 'Enviar Notificaciones'}
             </Button>
           </DialogFooter>
         </DialogContent>

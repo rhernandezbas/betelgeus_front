@@ -85,6 +85,7 @@ export default function NOCDashboard() {
     pollingLoading,
     startPolling,
     stopPolling,
+    sendWhatsAppNotification,
     testWhatsApp,
     health,
     fetchHealth,
@@ -178,12 +179,12 @@ export default function NOCDashboard() {
     }
   }
 
-  const handleWhatsAppEvent = async (type, eventId) => {
+  const handleWhatsAppEvent = async (eventId) => {
     try {
-      await testWhatsApp(type, null, eventId)
+      const result = await sendWhatsAppNotification(eventId)
       toast({
-        title: 'WhatsApp Enviado',
-        description: `Mensaje de tipo "${type}" enviado correctamente`
+        title: 'Notificaciones Enviadas',
+        description: `${result.notifications_sent || 2} notificaciones enviadas correctamente`
       })
     } catch (error) {
       toast({

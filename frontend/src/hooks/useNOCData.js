@@ -335,6 +335,16 @@ export const useNOCData = () => {
 
   // ==================== WHATSAPP ====================
 
+  const sendWhatsAppNotification = useCallback(async (eventId) => {
+    try {
+      return await nocApi.whatsapp.notifyEvent(eventId)
+    } catch (err) {
+      console.error('Error sending WhatsApp notification:', err)
+      throw err
+    }
+  }, [])
+
+  // Legacy test function (para pruebas manuales)
   const testWhatsApp = useCallback(async (type = 'complete', siteId = null, eventId = null) => {
     try {
       const data = { type }
@@ -457,6 +467,7 @@ export const useNOCData = () => {
     stopPolling,
 
     // WhatsApp
+    sendWhatsAppNotification,
     testWhatsApp,
 
     // Health
