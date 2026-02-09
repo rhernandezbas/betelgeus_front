@@ -566,7 +566,7 @@ export default function NOCDashboard() {
             <SitesStatusChart sites={sites} outageSites={outageSites} />
             <SeverityPieChart events={events} />
             <EventsByTypeChart events={events} />
-            <UptimeTrendChart stats={stats} />
+            <UptimeTrendChart stats={stats} events={events} sites={sites} />
             <TopProblematicSites outageSites={outageSites} />
             <MTTRStats postMortems={postMortems} />
           </div>

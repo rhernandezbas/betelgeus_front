@@ -217,64 +217,60 @@ export function EventsByTypeChart({ events }) {
   )
 }
 
-// Uptime Trend Chart (Real data from stats)
-export function UptimeTrendChart({ stats }) {
+// Uptime Trend Chart (Real data based on events and sites)
+export function UptimeTrendChart({ stats, events, sites }) {
   const data = useMemo(() => {
-    const STORAGE_KEY = 'noc_uptime_history'
-    const MAX_POINTS = 24 // Keep last 24 data points (12 hours with 30s refresh)
+    // Generate last 7 days
+    const days = []
+    const now = new Date()
 
-    // Get stored history
-    let history = []
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      history = stored ? JSON.parse(stored) : []
-    } catch (error) {
-      console.error('Error loading uptime history:', error)
-      history = []
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now)
+      date.setDate(date.getDate() - i)
+      date.setHours(0, 0, 0, 0)
+      days.push(date)
     }
 
-    // Add current data point if stats available
-    if (stats && stats.uptimePercent !== undefined) {
-      const now = new Date()
-      const newPoint = {
-        timestamp: now.toISOString(),
-        uptime: parseFloat(stats.uptimePercent),
-        sitesDown: stats.sitesDown || 0,
-        activeEvents: stats.totalActiveEvents || 0
+    const totalSites = sites?.length || 1 // Avoid division by zero
+
+    return days.map(day => {
+      const dayStart = new Date(day)
+      const dayEnd = new Date(day)
+      dayEnd.setHours(23, 59, 59, 999)
+
+      // Count critical outages for this day
+      const criticalOutages = events?.filter(event => {
+        const eventDate = new Date(event.created_at)
+        const isCritical = event.severity === 'critical'
+        const isOutage = event.event_type === 'site_outage' || event.event_type === 'site_degraded'
+        const isInDay = eventDate >= dayStart && eventDate <= dayEnd
+        return isCritical && isOutage && isInDay
+      }).length || 0
+
+      // Calculate uptime percentage for the day
+      // If it's today, use current stats, otherwise calculate from events
+      const isToday = day.toDateString() === now.toDateString()
+      let uptime
+
+      if (isToday && stats?.uptimePercent !== undefined) {
+        // Use current real-time uptime for today
+        uptime = parseFloat(stats.uptimePercent)
+      } else {
+        // Calculate uptime based on critical outages
+        // Assume each critical outage affects 1 site
+        const affectedSites = Math.min(criticalOutages, totalSites)
+        const healthySites = totalSites - affectedSites
+        uptime = (healthySites / totalSites) * 100
       }
 
-      // Check if we should add this point (avoid duplicates within 1 minute)
-      const shouldAdd = history.length === 0 ||
-        (now - new Date(history[history.length - 1].timestamp)) > 60000
-
-      if (shouldAdd) {
-        history.push(newPoint)
-
-        // Keep only last MAX_POINTS
-        if (history.length > MAX_POINTS) {
-          history = history.slice(-MAX_POINTS)
-        }
-
-        // Save to localStorage
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(history))
-        } catch (error) {
-          console.error('Error saving uptime history:', error)
-        }
-      }
-    }
-
-    // Format for chart (show last 12 points max)
-    return history.slice(-12).map(point => {
-      const date = new Date(point.timestamp)
       return {
-        time: date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-        uptime: point.uptime,
-        sites: point.sitesDown,
-        events: point.activeEvents
+        date: day.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric' }),
+        uptime: Math.max(0, Math.min(100, uptime)), // Clamp between 0-100
+        incidents: criticalOutages,
+        fullDate: day.toLocaleDateString('es-AR')
       }
     })
-  }, [stats])
+  }, [stats, events, sites])
 
   // Calculate min/max for Y axis domain
   const minUptime = data.length > 0 ? Math.min(...data.map(d => d.uptime)) : 90
@@ -288,38 +284,37 @@ export function UptimeTrendChart({ stats }) {
           Tendencia de Uptime
         </CardTitle>
         <CardDescription>
-          {data.length > 0 ? `Últimos ${data.length} puntos de datos` : 'Recopilando datos...'}
+          Últimos 7 días (basado en incidentes críticos)
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {data.length === 0 ? (
-          <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-            Esperando datos... El gráfico se construirá con el tiempo
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" tick={{ fontSize: 12 }} />
-              <YAxis domain={[yAxisMin, 100]} tickFormatter={(v) => `${v}%`} />
-              <Tooltip
-                formatter={(value, name) => {
-                  if (name === 'uptime') return [`${value.toFixed(2)}%`, 'Uptime']
-                  if (name === 'sites') return [value, 'Sites Caídos']
-                  if (name === 'events') return [value, 'Eventos Activos']
-                  return [value, name]
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="uptime"
-                stroke="#10b981"
-                fill="#10b98140"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis domain={[yAxisMin, 100]} tickFormatter={(v) => `${v}%`} />
+            <Tooltip
+              formatter={(value, name) => {
+                if (name === 'uptime') return [`${value.toFixed(2)}%`, 'Uptime']
+                if (name === 'incidents') return [value, 'Incidentes Críticos']
+                return [value, name]
+              }}
+              labelFormatter={(label, payload) => {
+                if (payload && payload[0]) {
+                  return payload[0].payload.fullDate
+                }
+                return label
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="uptime"
+              stroke="#10b981"
+              fill="#10b98140"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   )
