@@ -70,7 +70,6 @@ export default function NOCDashboard() {
     eventsLoading,
     fetchEvents,
     fetchActiveEvents,
-    createEvent,
     acknowledgeEvent,
     resolveEvent,
     deleteEvent,
@@ -78,7 +77,6 @@ export default function NOCDashboard() {
     postMortemsLoading,
     fetchPostMortems,
     createPostMortem,
-    createPostMortemForSite,
     updatePostMortem,
     completePostMortem,
     reviewPostMortem,
@@ -131,44 +129,6 @@ export default function NOCDashboard() {
   const handleViewSiteDetails = (site) => {
     setSelectedSite(site)
     setSiteDetailsOpen(true)
-  }
-
-  const handleAcknowledgeSite = async (site) => {
-    try {
-      await createEvent({
-        event_type: 'site_outage',
-        severity: site.outage_percentage >= 90 ? 'critical' : 'high',
-        title: `Caída reconocida: ${site.site_name}`,
-        description: `Site con ${site.device_outage_count}/${site.device_count} dispositivos caídos (${site.outage_percentage?.toFixed(1)}%)`,
-        custom_data: { site_id: site.site_id, site_name: site.site_name }
-      })
-      toast({
-        title: 'Evento Creado',
-        description: 'Se ha creado un evento para este site'
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-    }
-  }
-
-  const handleWhatsAppSite = async (site) => {
-    try {
-      await testWhatsApp('complete', site.site_id)
-      toast({
-        title: 'Notificación Enviada',
-        description: `Alerta de WhatsApp enviada para ${site.site_name}`
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
-    }
   }
 
   const handleAcknowledgeEvent = async (eventId, data) => {
@@ -460,24 +420,6 @@ export default function NOCDashboard() {
                   key={site.site_id}
                   site={site}
                   onViewDetails={handleViewSiteDetails}
-                  onAcknowledge={handleAcknowledgeSite}
-                  onWhatsApp={handleWhatsAppSite}
-                  onCreatePostMortem={async (site) => {
-                    try {
-                      await createPostMortemForSite(site)
-                      toast({
-                        title: 'Post-Mortem Creado',
-                        description: `Se creó un post-mortem para ${site.site_name}`
-                      })
-                      setActiveTab('postmortem')
-                    } catch (error) {
-                      toast({
-                        title: 'Error',
-                        description: error.message,
-                        variant: 'destructive'
-                      })
-                    }
-                  }}
                 />
               ))}
             </div>

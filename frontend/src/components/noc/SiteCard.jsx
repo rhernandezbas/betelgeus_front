@@ -11,23 +11,28 @@ import {
   Wifi,
   WifiOff,
   AlertTriangle,
-  Eye,
-  CheckCircle,
-  MessageSquare,
-  FileText
+  Eye
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Helper to calculate downtime duration
-const calculateDowntime = (lastChecked) => {
-  if (!lastChecked) return 'Desconocido'
-  const start = new Date(lastChecked)
+// Helper to calculate downtime duration from outage_start
+const calculateDowntime = (outageStart) => {
+  if (!outageStart) return 'Reciente'
+  const start = new Date(outageStart)
   const now = new Date()
   const diffMs = now - start
+
+  if (diffMs < 0) return 'Reciente' // Handle edge cases
+
   const diffMins = Math.floor(diffMs / 60000)
   const hours = Math.floor(diffMins / 60)
   const mins = diffMins % 60
+  const days = Math.floor(hours / 24)
+  const remainingHours = hours % 24
 
+  if (days > 0) {
+    return `${days}d ${remainingHours}h`
+  }
   if (hours > 0) {
     return `${hours}h ${mins}m`
   }
@@ -51,21 +56,19 @@ const getSeverityBadge = (outagePercentage) => {
 export default function SiteCard({
   site,
   onViewDetails,
-  onAcknowledge,
-  onWhatsApp,
-  onCreatePostMortem,
   compact = false
 }) {
-  const [downtime, setDowntime] = useState(calculateDowntime(site.last_checked))
+  const [downtime, setDowntime] = useState(calculateDowntime(site.outage_start))
   const severity = getSeverityBadge(site.outage_percentage || 0)
 
   // Update downtime every minute
   useEffect(() => {
+    setDowntime(calculateDowntime(site.outage_start))
     const interval = setInterval(() => {
-      setDowntime(calculateDowntime(site.last_checked))
+      setDowntime(calculateDowntime(site.outage_start))
     }, 60000)
     return () => clearInterval(interval)
-  }, [site.last_checked])
+  }, [site.outage_start])
 
   const isDown = site.is_site_down
   const StatusIcon = isDown ? WifiOff : AlertTriangle
@@ -186,48 +189,23 @@ export default function SiteCard({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Actions - Solo informativo */}
         <div className="flex flex-wrap gap-2 pt-2">
           <Button
             size="sm"
             variant="outline"
             onClick={() => onViewDetails?.(site)}
-            className="flex-1"
+            className="w-full"
           >
             <Eye className="h-4 w-4 mr-1" />
-            Detalles
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onAcknowledge?.(site)}
-            className="flex-1"
-          >
-            <CheckCircle className="h-4 w-4 mr-1" />
-            Reconocer
-          </Button>
-
-          {site.contact_phone && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onWhatsApp?.(site)}
-            >
-              <MessageSquare className="h-4 w-4" />
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onCreatePostMortem?.(site)}
-            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-          >
-            <FileText className="h-4 w-4 mr-1" />
-            Post-Mortem
+            Ver Detalles
           </Button>
         </div>
+
+        {/* Info: Las acciones se realizan desde Eventos */}
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          Las acciones se gestionan desde la pestaña Eventos
+        </p>
       </CardContent>
     </Card>
   )
