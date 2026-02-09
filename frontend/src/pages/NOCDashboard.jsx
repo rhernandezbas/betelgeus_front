@@ -492,6 +492,7 @@ export default function NOCDashboard() {
                   onDelete={handleDeleteEvent}
                   onCreatePostMortem={handleCreatePostMortem}
                   onWhatsApp={handleWhatsAppEvent}
+                  currentUser={user}
                 />
               ))}
             </div>

@@ -78,6 +78,7 @@ export default function EventCard({
   onDelete,
   onCreatePostMortem,
   onWhatsApp,
+  currentUser,
   compact = false
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -86,7 +87,7 @@ export default function EventCard({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false)
   const [whatsappType, setWhatsappType] = useState('complete')
-  const [formData, setFormData] = useState({ by: '', note: '' })
+  const [formData, setFormData] = useState({ by: currentUser?.username || currentUser?.name || '', note: '' })
   const [loading, setLoading] = useState(false)
 
   const severity = severityConfig[event.severity] || severityConfig.info
@@ -255,7 +256,10 @@ export default function EventCard({
             {event.status === 'active' && (
               <Button
                 size="sm"
-                onClick={() => setAcknowledgeDialogOpen(true)}
+                onClick={() => {
+                  setFormData({ by: currentUser?.username || currentUser?.name || '', note: '' })
+                  setAcknowledgeDialogOpen(true)
+                }}
                 className="bg-yellow-600 hover:bg-yellow-700"
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -266,7 +270,10 @@ export default function EventCard({
             {(event.status === 'active' || event.status === 'acknowledged') && (
               <Button
                 size="sm"
-                onClick={() => setResolveDialogOpen(true)}
+                onClick={() => {
+                  setFormData({ by: currentUser?.username || currentUser?.name || '', note: '' })
+                  setResolveDialogOpen(true)
+                }}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
@@ -274,7 +281,7 @@ export default function EventCard({
               </Button>
             )}
 
-            {(event.status === 'acknowledged' || event.status === 'resolved') && onCreatePostMortem && (
+            {onCreatePostMortem && (
               <Button
                 size="sm"
                 variant="outline"
