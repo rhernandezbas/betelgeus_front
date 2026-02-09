@@ -72,6 +72,11 @@ function App() {
               <DeviceAnalysis />
             </PermissionRoute>
           } />
+          <Route path="noc-dashboard" element={
+            <PermissionRoute requiredPermission="can_access_noc_dashboard">
+              <NOCDashboard />
+            </PermissionRoute>
+          } />
         </Route>
       </Routes>
       <Toaster />

@@ -1,12 +1,11 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  MessageSquare,
-  BarChart3,
+import {
+  LayoutDashboard,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Radio
+  Radio,
+  AlertTriangle
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -28,16 +27,25 @@ export default function OperatorLayout() {
     const navItems = [
       { name: 'Dashboard', href: '/operator-view', icon: LayoutDashboard }
     ]
-    
+
+    // Agregar NOC Dashboard si tiene permisos
+    if (user.can_access_noc_dashboard === true) {
+      navItems.push({
+        name: 'NOC Dashboard',
+        href: '/operator-view/noc-dashboard',
+        icon: AlertTriangle
+      })
+    }
+
     // Agregar Device Analysis si tiene permisos
     if (user.can_access_device_analysis !== false) {
       navItems.push({
-        name: 'Análisis de Dispositivos', 
-        href: '/operator-view/device-analysis', 
+        name: 'Análisis de Dispositivos',
+        href: '/operator-view/device-analysis',
         icon: Radio
       })
     }
-    
+
     setNavigation(navItems)
   }, [])
 
