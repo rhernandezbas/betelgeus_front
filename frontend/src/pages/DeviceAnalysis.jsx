@@ -181,11 +181,47 @@ class ExecutionAwareAnalyzer extends StationAnalyzer {
   }
 
   async analyzeStation(ip, mac) {
+    // Step 1: Ping
     this.updateCallback(this.executionId, {
       status: 'analyzing',
       progress: {
-        currentStep: 'Analyzing',
-        message: 'Analizando dispositivo y obteniendo recomendaciones de IA...'
+        currentStep: 'Ping Test',
+        message: '🔍 Verificando conectividad con ping estructurado...'
+      }
+    })
+
+    // Simulate progress for first 2 seconds (ping time)
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    // Step 2: SSH & Scans
+    this.updateCallback(this.executionId, {
+      status: 'analyzing',
+      progress: {
+        currentStep: 'Wireless Scan',
+        message: '📡 Ejecutando escaneos iwlist (esto toma ~25 segundos)...'
+      }
+    })
+
+    // Simulate progress for scan time
+    await new Promise(resolve => setTimeout(resolve, 5000))
+
+    // Step 3: API Calls
+    this.updateCallback(this.executionId, {
+      status: 'analyzing',
+      progress: {
+        currentStep: 'Device Info',
+        message: '🌐 Consultando información del dispositivo en UISP...'
+      }
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 2000))
+
+    // Step 4: LLM Analysis
+    this.updateCallback(this.executionId, {
+      status: 'analyzing',
+      progress: {
+        currentStep: 'AI Analysis',
+        message: '🤖 Generando análisis con IA (recomendaciones NOC)...'
       }
     })
 
@@ -209,8 +245,8 @@ class ExecutionAwareAnalyzer extends StationAnalyzer {
     this.updateCallback(this.executionId, {
       status: 'enabling_frequencies',
       progress: {
-        currentStep: 'Enabling Frequencies',
-        message: 'Habilitando frecuencias 5GHz...'
+        currentStep: 'Enable Frequencies',
+        message: `⚙️ Habilitando frecuencias 5GHz en ${model}...`
       }
     })
 
@@ -221,8 +257,8 @@ class ExecutionAwareAnalyzer extends StationAnalyzer {
     this.updateCallback(this.executionId, {
       status: 'waiting_connection',
       progress: {
-        currentStep: 'Waiting Connection',
-        message: 'Esperando reconexión del dispositivo...'
+        currentStep: 'Wait Connection',
+        message: `⏳ Esperando reconexión del dispositivo (máx ${Math.floor(maxWaitTime / 60)}min)...`
       }
     })
 
