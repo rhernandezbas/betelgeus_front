@@ -345,6 +345,8 @@ export default function DeviceAnalysis() {
   const [feedbackList, setFeedbackList] = useState([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackComment, setFeedbackComment] = useState('')
+  const [feedbackType, setFeedbackType] = useState('positivo')
+  const [feedbackRating, setFeedbackRating] = useState(5)
   const [feedbackStats, setFeedbackStats] = useState(null)
   const [feedbackFilters, setFeedbackFilters] = useState({
     deviceIp: '',
@@ -445,7 +447,8 @@ export default function DeviceAnalysis() {
         response = await analyzer.getFeedbackList()
       }
 
-      setFeedbackList(response.feedback || [])
+      // Backend returns array directly, not wrapped in object
+      setFeedbackList(Array.isArray(response) ? response : [])
     } catch (error) {
       console.error('Error fetching feedback list:', error)
       toast({
@@ -533,8 +536,8 @@ export default function DeviceAnalysis() {
         analysis_id: analysisId,
         device_ip: deviceIp,
         device_mac: deviceMac,
-        feedback_type: 'positivo', // Default to positive
-        rating: 5,
+        feedback_type: feedbackType, // Use selected type
+        rating: feedbackRating, // Use selected rating
         comments: feedbackComment, // Changed from 'comment' to 'comments'
         user_name: currentUser?.username || currentUser?.name || 'Anónimo',
         user_email: currentUser?.email || null
@@ -547,10 +550,14 @@ export default function DeviceAnalysis() {
         description: 'Tu feedback ha sido enviado'
       })
 
+      // Reset feedback form
       setFeedbackComment('')
+      setFeedbackType('positivo')
+      setFeedbackRating(5)
 
       if (activeTab === 'feedback') {
         fetchFeedbackList()
+        fetchFeedbackStats()
       }
     } catch (error) {
       console.error('Error sending feedback:', error)
@@ -1211,12 +1218,77 @@ export default function DeviceAnalysis() {
                 <div className="border-t pt-4">
                   <h4 className="font-medium text-gray-800 mb-3">Feedback del Análisis</h4>
                   <div className="space-y-3">
-                    <Textarea
-                      placeholder="¿Fue útil este análisis? ¿Hay algo que podamos mejorar?"
-                      value={feedbackComment}
-                      onChange={(e) => setFeedbackComment(e.target.value)}
-                      rows={3}
-                    />
+                    {/* Feedback Type Selector */}
+                    <div className="space-y-2">
+                      <Label>Tipo de Feedback</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={feedbackType === 'positivo' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setFeedbackType('positivo')}
+                          className={feedbackType === 'positivo' ? 'bg-green-600 hover:bg-green-700' : ''}
+                        >
+                          <ThumbsUp className="h-4 w-4 mr-1" />
+                          Positivo
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={feedbackType === 'parcial' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setFeedbackType('parcial')}
+                          className={feedbackType === 'parcial' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
+                        >
+                          Parcial
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={feedbackType === 'negativo' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setFeedbackType('negativo')}
+                          className={feedbackType === 'negativo' ? 'bg-red-600 hover:bg-red-700' : ''}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Negativo
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Rating Selector */}
+                    <div className="space-y-2">
+                      <Label>Calificación</Label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setFeedbackRating(star)}
+                            className="focus:outline-none"
+                          >
+                            <Star
+                              className={`h-6 w-6 cursor-pointer transition-colors ${
+                                star <= feedbackRating
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300 hover:text-yellow-200'
+                              }`}
+                            />
+                          </button>
+                        ))}
+                        <span className="ml-2 text-sm text-gray-600">{feedbackRating}/5</span>
+                      </div>
+                    </div>
+
+                    {/* Comment */}
+                    <div className="space-y-2">
+                      <Label>Comentarios</Label>
+                      <Textarea
+                        placeholder="¿Fue útil este análisis? ¿Hay algo que podamos mejorar?"
+                        value={feedbackComment}
+                        onChange={(e) => setFeedbackComment(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+
                     <Button
                       onClick={() => handleFeedback(selectedExecution)}
                       disabled={!feedbackComment.trim() || !selectedExecution.result?.analysis_id}
