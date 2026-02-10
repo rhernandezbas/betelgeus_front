@@ -410,11 +410,22 @@ export default function DeviceAnalysis() {
     }
   }, [activeTab, fetchLogs, fetchFeedbackList])
 
-  const handleFeedback = async (executionId) => {
+  const handleFeedback = async (execution) => {
     if (!feedbackComment.trim()) {
       toast({
         title: 'Error',
         description: 'Por favor ingresa un comentario',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // Get analysis_id from execution result
+    const analysisId = execution?.result?.analysis_id
+    if (!analysisId) {
+      toast({
+        title: 'Error',
+        description: 'No se encontró el ID del análisis',
         variant: 'destructive'
       })
       return
@@ -428,7 +439,7 @@ export default function DeviceAnalysis() {
         timestamp: new Date().toISOString()
       }
 
-      await analyzer.submitFeedback(executionId || Date.now(), feedbackData)
+      await analyzer.submitFeedback(analysisId, feedbackData)
 
       toast({
         title: 'Gracias',
@@ -980,8 +991,8 @@ export default function DeviceAnalysis() {
                       rows={3}
                     />
                     <Button
-                      onClick={() => handleFeedback(selectedExecution.id)}
-                      disabled={!feedbackComment.trim()}
+                      onClick={() => handleFeedback(selectedExecution)}
+                      disabled={!feedbackComment.trim() || !selectedExecution.result?.analysis_id}
                       size="sm"
                     >
                       <ThumbsUp className="h-4 w-4 mr-2" />
