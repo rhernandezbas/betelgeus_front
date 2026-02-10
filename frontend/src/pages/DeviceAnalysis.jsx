@@ -693,8 +693,13 @@ export default function DeviceAnalysis() {
                             {new Date(item.startedAt).toLocaleString()}
                           </span>
                         </div>
-                        {item.result?.llm_analysis?.summary && (
-                          <p className="text-sm text-gray-600">{item.result.llm_analysis.summary}</p>
+                        {item.result?.llm_analysis && (
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {typeof item.result.llm_analysis === 'string'
+                              ? item.result.llm_analysis.substring(0, 150) + '...'
+                              : item.result.llm_analysis.summary || ''
+                            }
+                          </p>
                         )}
                         {item.error && (
                           <p className="text-sm text-red-600">{item.error}</p>
@@ -902,27 +907,13 @@ export default function DeviceAnalysis() {
                       <MessageSquare className="h-4 w-4" />
                       Análisis de IA
                     </h4>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-sm font-medium text-blue-700 mb-1">Resumen:</p>
-                        <p className="text-sm text-blue-600">
-                          {selectedExecution.result.llm_analysis.summary}
-                        </p>
-                      </div>
-
-                      {selectedExecution.result.llm_analysis.recommendations && (
-                        <div>
-                          <p className="text-sm font-medium text-blue-700 mb-2">Recomendaciones:</p>
-                          <ul className="space-y-1">
-                            {selectedExecution.result.llm_analysis.recommendations.map((rec, index) => (
-                              <li key={index} className="text-sm text-blue-600 flex items-start gap-2">
-                                <span className="text-blue-400 mt-1">•</span>
-                                {rec}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
+                    <div className="bg-white rounded-lg p-4 border border-blue-100">
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">
+                        {typeof selectedExecution.result.llm_analysis === 'string'
+                          ? selectedExecution.result.llm_analysis
+                          : selectedExecution.result.llm_analysis.summary || JSON.stringify(selectedExecution.result.llm_analysis, null, 2)
+                        }
+                      </pre>
                     </div>
                   </div>
                 )}
