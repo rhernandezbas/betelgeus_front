@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { useExecutionManager } from '@/hooks/useExecutionManager'
 import ExecutionsPanel from '@/components/device-analysis/ExecutionsPanel'
@@ -20,7 +21,9 @@ import {
   Server,
   Radio,
   FileText,
-  Star
+  Star,
+  Trash2,
+  User
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -118,6 +121,48 @@ class StationAnalyzer {
 
     if (!response.ok) {
       throw new Error(`Error obteniendo feedback del análisis: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  async getFeedbackByDevice(deviceIp, limit = 50) {
+    const response = await fetch(`${this.baseUrl}/feedback/device/${deviceIp}?limit=${limit}`)
+
+    if (!response.ok) {
+      throw new Error(`Error obteniendo feedback del dispositivo: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  async getFeedbackByType(type, limit = 100) {
+    const response = await fetch(`${this.baseUrl}/feedback/type/${type}?limit=${limit}`)
+
+    if (!response.ok) {
+      throw new Error(`Error obteniendo feedback por tipo: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  async getFeedbackStats() {
+    const response = await fetch(`${this.baseUrl}/feedback/stats`)
+
+    if (!response.ok) {
+      throw new Error(`Error obteniendo estadísticas de feedback: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  async deleteFeedback(feedbackId) {
+    const response = await fetch(`${this.baseUrl}/feedback/${feedbackId}`, {
+      method: 'DELETE'
+    })
+
+    if (!response.ok) {
+      throw new Error(`Error eliminando feedback: ${response.statusText}`)
     }
 
     return await response.json()
@@ -300,6 +345,11 @@ export default function DeviceAnalysis() {
   const [feedbackList, setFeedbackList] = useState([])
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbackComment, setFeedbackComment] = useState('')
+  const [feedbackStats, setFeedbackStats] = useState(null)
+  const [feedbackFilters, setFeedbackFilters] = useState({
+    deviceIp: '',
+    type: 'all' // 'all', 'positivo', 'negativo', 'parcial'
+  })
 
   const { toast } = useToast()
 
@@ -384,7 +434,17 @@ export default function DeviceAnalysis() {
   const fetchFeedbackList = useCallback(async () => {
     setFeedbackLoading(true)
     try {
-      const response = await analyzer.getFeedbackList()
+      let response
+
+      // Apply filters
+      if (feedbackFilters.deviceIp) {
+        response = await analyzer.getFeedbackByDevice(feedbackFilters.deviceIp)
+      } else if (feedbackFilters.type !== 'all') {
+        response = await analyzer.getFeedbackByType(feedbackFilters.type)
+      } else {
+        response = await analyzer.getFeedbackList()
+      }
+
       setFeedbackList(response.feedback || [])
     } catch (error) {
       console.error('Error fetching feedback list:', error)
@@ -396,7 +456,39 @@ export default function DeviceAnalysis() {
     } finally {
       setFeedbackLoading(false)
     }
-  }, [analyzer, toast])
+  }, [analyzer, toast, feedbackFilters])
+
+  const fetchFeedbackStats = useCallback(async () => {
+    try {
+      const response = await analyzer.getFeedbackStats()
+      setFeedbackStats(response.stats || null)
+    } catch (error) {
+      console.error('Error fetching feedback stats:', error)
+    }
+  }, [analyzer])
+
+  const handleDeleteFeedback = useCallback(async (feedbackId) => {
+    if (!window.confirm('¿Estás seguro de que quieres eliminar este feedback?')) {
+      return
+    }
+
+    try {
+      await analyzer.deleteFeedback(feedbackId)
+      toast({
+        title: 'Feedback Eliminado',
+        description: 'El feedback ha sido eliminado correctamente'
+      })
+      fetchFeedbackList()
+      fetchFeedbackStats()
+    } catch (error) {
+      console.error('Error deleting feedback:', error)
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive'
+      })
+    }
+  }, [analyzer, toast, fetchFeedbackList, fetchFeedbackStats])
 
   // Tab change effect
   useEffect(() => {
@@ -404,8 +496,9 @@ export default function DeviceAnalysis() {
       fetchLogs()
     } else if (activeTab === 'feedback') {
       fetchFeedbackList()
+      fetchFeedbackStats()
     }
-  }, [activeTab, fetchLogs, fetchFeedbackList])
+  }, [activeTab, fetchLogs, fetchFeedbackList, fetchFeedbackStats])
 
   const handleFeedback = async (execution) => {
     if (!feedbackComment.trim()) {
@@ -861,14 +954,109 @@ export default function DeviceAnalysis() {
           </TabsContent>
 
           <TabsContent value="feedback" className="space-y-6">
+            {/* Stats Card */}
+            {feedbackStats && (
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-blue-600">{feedbackStats.total || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Total Feedbacks</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-green-600">{feedbackStats.positivo || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Positivos</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-red-600">{feedbackStats.negativo || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Negativos</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-yellow-600">{feedbackStats.parcial || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Parciales</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-bold text-purple-600">{feedbackStats.avg_rating?.toFixed(1) || 0}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Rating Promedio</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Filters */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Filtros</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>IP del Dispositivo</Label>
+                    <Input
+                      placeholder="192.168.1.100"
+                      value={feedbackFilters.deviceIp}
+                      onChange={(e) => setFeedbackFilters({...feedbackFilters, deviceIp: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo de Feedback</Label>
+                    <select
+                      className="w-full rounded-md border border-input bg-background px-3 py-2"
+                      value={feedbackFilters.type}
+                      onChange={(e) => setFeedbackFilters({...feedbackFilters, type: e.target.value})}
+                    >
+                      <option value="all">Todos</option>
+                      <option value="positivo">Positivos</option>
+                      <option value="negativo">Negativos</option>
+                      <option value="parcial">Parciales</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button onClick={fetchFeedbackList} size="sm">
+                    <Search className="h-4 w-4 mr-2" />
+                    Aplicar Filtros
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setFeedbackFilters({ deviceIp: '', type: 'all' })
+                      fetchFeedbackList()
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Limpiar
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Feedback List */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MessageSquare className="h-5 w-5" />
-                  Feedback de Usuarios
+                  Lista de Feedbacks
                 </CardTitle>
                 <CardDescription>
-                  Lista de todos los feedbacks enviados por los usuarios
+                  {feedbackList.length} feedback{feedbackList.length !== 1 ? 's' : ''} encontrado{feedbackList.length !== 1 ? 's' : ''}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -880,39 +1068,70 @@ export default function DeviceAnalysis() {
                   <div className="space-y-4">
                     {feedbackList.map((feedback, index) => (
                       <div key={index} className="border rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="font-medium">Análisis #{feedback.analysis_id}</span>
+                            <Badge variant={
+                              feedback.feedback_type === 'positivo' ? 'default' :
+                              feedback.feedback_type === 'negativo' ? 'destructive' :
+                              'secondary'
+                            }>
+                              {feedback.feedback_type || 'Sin tipo'}
+                            </Badge>
                             <div className="flex items-center gap-1">
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
                                   className={`h-4 w-4 ${
-                                    i < (feedback.rating || 5) 
-                                      ? 'text-yellow-400 fill-current' 
+                                    i < (feedback.rating || 5)
+                                      ? 'text-yellow-400 fill-current'
                                       : 'text-gray-300'
                                   }`}
                                 />
                               ))}
                             </div>
                           </div>
-                          <span className="text-xs text-gray-500">
-                            {new Date(feedback.timestamp).toLocaleString()}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteFeedback(feedback.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+
+                        {feedback.device_ip && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                            <Radio className="h-3 w-3" />
+                            <span>{feedback.device_ip}</span>
+                            {feedback.device_mac && <span>({feedback.device_mac})</span>}
+                          </div>
+                        )}
+
+                        <p className="text-sm text-gray-700 mb-2">{feedback.comments || feedback.comment}</p>
+
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                          <div className="flex items-center gap-2">
+                            {feedback.user_name && (
+                              <span className="flex items-center gap-1">
+                                <User className="h-3 w-3" />
+                                {feedback.user_name}
+                              </span>
+                            )}
+                            {feedback.user_email && <span>• {feedback.user_email}</span>}
+                          </div>
+                          <span>
+                            {new Date(feedback.timestamp || feedback.created_at).toLocaleString('es-AR')}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">{feedback.comment}</p>
-                        {feedback.user_agent && (
-                          <p className="text-xs text-gray-400 mt-2">
-                            {feedback.user_agent}
-                          </p>
-                        )}
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <MessageSquare className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                    <p>No hay feedbacks registrados</p>
+                    <p>No hay feedbacks que coincidan con los filtros</p>
                   </div>
                 )}
               </CardContent>
