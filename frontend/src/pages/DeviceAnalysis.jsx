@@ -93,10 +93,7 @@ class StationAnalyzer {
     const response = await fetch(`${this.baseUrl}/feedback/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        analysis_id: analysisId,
-        ...feedbackData
-      })
+      body: JSON.stringify(feedbackData) // feedbackData already includes analysis_id
     })
 
     if (!response.ok) {
@@ -117,7 +114,7 @@ class StationAnalyzer {
   }
 
   async getFeedbackByAnalysis(analysisId) {
-    const response = await fetch(`${this.baseUrl}/feedback/analysis/${analysisId}/feedback`)
+    const response = await fetch(`${this.baseUrl}/feedback/analysis/${analysisId}`)
 
     if (!response.ok) {
       throw new Error(`Error obteniendo feedback del análisis: ${response.statusText}`)
@@ -431,12 +428,23 @@ export default function DeviceAnalysis() {
       return
     }
 
+    // Get device info from execution
+    const deviceIp = execution?.result?.device_info?.ip || 'Unknown'
+    const deviceMac = execution?.result?.device_info?.mac || null
+
+    // Get current user info
+    const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+
     try {
       const feedbackData = {
-        comment: feedbackComment,
+        analysis_id: analysisId,
+        device_ip: deviceIp,
+        device_mac: deviceMac,
+        feedback_type: 'positivo', // Default to positive
         rating: 5,
-        user_agent: navigator.userAgent,
-        timestamp: new Date().toISOString()
+        comments: feedbackComment, // Changed from 'comment' to 'comments'
+        user_name: currentUser?.username || currentUser?.name || 'Anónimo',
+        user_email: currentUser?.email || null
       }
 
       await analyzer.submitFeedback(analysisId, feedbackData)
