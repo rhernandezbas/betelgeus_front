@@ -247,8 +247,7 @@ export function UptimeTrendChart({ stats, events, sites }) {
         return isCritical && isOutage && isInDay
       }).length || 0
 
-      // Calculate uptime percentage for the day
-      // If it's today, use current stats, otherwise calculate from events
+      // Calculate uptime percentage for the day based on actual downtime
       const isToday = day.toDateString() === now.toDateString()
       let uptime
 
@@ -256,11 +255,41 @@ export function UptimeTrendChart({ stats, events, sites }) {
         // Use current real-time uptime for today
         uptime = parseFloat(stats.uptimePercent)
       } else {
-        // Calculate uptime based on critical outages
-        // Assume each critical outage affects 1 site
-        const affectedSites = Math.min(criticalOutages, totalSites)
-        const healthySites = totalSites - affectedSites
-        uptime = (healthySites / totalSites) * 100
+        // Calculate uptime based on actual downtime minutes from events
+        const totalMinutesInDay = 1440 // 24 hours * 60 minutes
+        const totalPossibleUptimeMinutes = totalSites * totalMinutesInDay
+
+        // Calculate total downtime for this day from ALL outage events (not just critical)
+        let totalDowntimeMinutes = 0
+
+        events?.forEach(event => {
+          const eventDate = new Date(event.created_at)
+          const isOutage = event.event_type === 'site_outage' || event.event_type === 'site_degraded'
+          const isInDay = eventDate >= dayStart && eventDate <= dayEnd
+
+          if (isOutage && isInDay && event.resolved_at) {
+            // Calculate downtime for this event
+            const start = new Date(event.created_at)
+            const end = new Date(event.resolved_at)
+            const downtimeMs = Math.max(0, end - start)
+            const downtimeMinutes = downtimeMs / 60000
+            totalDowntimeMinutes += downtimeMinutes
+          } else if (isOutage && isInDay && !event.resolved_at && !isToday) {
+            // Event started but not resolved by end of day (assume rest of day was down)
+            const start = new Date(event.created_at)
+            const downtimeMs = dayEnd - start
+            const downtimeMinutes = Math.max(0, downtimeMs / 60000)
+            totalDowntimeMinutes += downtimeMinutes
+          }
+        })
+
+        // Calculate uptime percentage
+        if (totalPossibleUptimeMinutes > 0) {
+          const actualUptimeMinutes = Math.max(0, totalPossibleUptimeMinutes - totalDowntimeMinutes)
+          uptime = (actualUptimeMinutes / totalPossibleUptimeMinutes) * 100
+        } else {
+          uptime = 100 // No sites = 100% uptime by default
+        }
       }
 
       return {
