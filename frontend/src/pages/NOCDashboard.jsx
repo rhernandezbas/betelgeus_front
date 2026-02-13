@@ -28,7 +28,8 @@ import {
   BarChart3,
   Lock,
   ShieldAlert,
-  XCircle
+  XCircle,
+  Link2
 } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
@@ -38,6 +39,7 @@ import SiteCard from '@/components/noc/SiteCard'
 import EventCard from '@/components/noc/EventCard'
 import PostMortemCard from '@/components/noc/PostMortemCard'
 import PostMortemEditor from '@/components/noc/PostMortemEditor'
+import PostMortemRelationshipManager from '@/components/noc/PostMortemRelationshipManager'
 import {
   SeverityPieChart,
   SitesStatusChart,
@@ -81,6 +83,9 @@ export default function NOCDashboard() {
     reviewPostMortem,
     getPostMortemReport,
     deletePostMortem,
+    linkPostMortems,
+    unlinkPostMortems,
+    getRelatedPostMortems,
     pollingStatus,
     pollingLoading,
     startPolling,
@@ -108,6 +113,8 @@ export default function NOCDashboard() {
   const [postMortemEditorOpen, setPostMortemEditorOpen] = useState(false)
   const [editingPostMortem, setEditingPostMortem] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
+  const [relationshipManagerOpen, setRelationshipManagerOpen] = useState(false)
+  const [selectedPMForRelations, setSelectedPMForRelations] = useState(null)
 
   // Handlers
   const handleScan = async () => {
@@ -649,6 +656,10 @@ export default function NOCDashboard() {
                       onReview={handleReviewPostMortem}
                       onReport={handleDownloadReport}
                       onDelete={handleDeletePostMortem}
+                      onRelate={() => {
+                        setSelectedPMForRelations(pm)
+                        setRelationshipManagerOpen(true)
+                      }}
                       currentUser={user}
                     />
                   ))}
@@ -772,6 +783,21 @@ export default function NOCDashboard() {
           <SiteDetailsContent site={selectedSite} />
         </DialogContent>
       </Dialog>
+
+      {/* Post-Mortem Relationship Manager */}
+      {relationshipManagerOpen && selectedPMForRelations && (
+        <PostMortemRelationshipManager
+          postMortem={selectedPMForRelations}
+          allPostMortems={postMortems}
+          onLink={linkPostMortems}
+          onUnlink={unlinkPostMortems}
+          getRelated={getRelatedPostMortems}
+          onClose={() => {
+            setRelationshipManagerOpen(false)
+            setSelectedPMForRelations(null)
+          }}
+        />
+      )}
     </div>
   )
 }

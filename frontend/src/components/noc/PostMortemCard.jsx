@@ -10,7 +10,10 @@ import {
   Edit,
   Download,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  GitBranch,
+  Link2,
+  Unlink
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -49,6 +52,7 @@ export default function PostMortemCard({
   onReview,
   onReport,
   onDelete,
+  onRelate,
   currentUser,
   compact = false
 }) {
@@ -164,6 +168,21 @@ export default function PostMortemCard({
           </div>
         )}
 
+        {/* Primary Incident Badge */}
+        {postMortem.child_count > 0 && (
+          <div className="p-2 rounded-lg bg-blue-50 border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-blue-800">
+                <GitBranch className="h-4 w-4" />
+                <span className="text-sm font-medium">Incidente Principal</span>
+              </div>
+              <Badge variant="secondary" className="bg-blue-100">
+                {postMortem.child_count} secundario{postMortem.child_count !== 1 ? 's' : ''}
+              </Badge>
+            </div>
+          </div>
+        )}
+
         {/* Meta Info */}
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
@@ -231,6 +250,18 @@ export default function PostMortemCard({
             <Download className="h-4 w-4 mr-1" />
             Reporte
           </Button>
+
+          {onRelate && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onRelate(postMortem)}
+              className="text-blue-600 border-blue-300 hover:bg-blue-50"
+            >
+              <Link2 className="h-4 w-4 mr-1" />
+              Relacionar
+            </Button>
+          )}
 
           <Button
             size="sm"

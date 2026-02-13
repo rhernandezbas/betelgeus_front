@@ -170,7 +170,8 @@ export const useNOCData = () => {
   const fetchPostMortems = useCallback(async (params = {}) => {
     setPostMortemsLoading(true)
     try {
-      const data = await nocApi.postMortem.getAll(params)
+      // Usar endpoint de primarios para ocultar secundarios agrupados
+      const data = await nocApi.postMortem.getPrimary(params)
       const rawPostMortems = Array.isArray(data) ? data : data.post_mortems || []
 
       // Parse JSON string fields to arrays (backend returns them as strings)
@@ -444,6 +445,39 @@ export const useNOCData = () => {
     return () => clearInterval(interval)
   }, [autoRefresh, refreshAll])
 
+  // ==================== POST-MORTEM RELATIONSHIPS ====================
+
+  const linkPostMortems = useCallback(async (parentId, childId, data) => {
+    try {
+      const result = await nocApi.postMortem.linkIncidents(parentId, childId, data)
+      await fetchPostMortems() // Refresh para actualizar lista
+      return result
+    } catch (err) {
+      console.error('Error linking post-mortems:', err)
+      throw err
+    }
+  }, [fetchPostMortems])
+
+  const unlinkPostMortems = useCallback(async (parentId, childId) => {
+    try {
+      const result = await nocApi.postMortem.unlinkIncidents(parentId, childId)
+      await fetchPostMortems() // Refresh
+      return result
+    } catch (err) {
+      console.error('Error unlinking post-mortems:', err)
+      throw err
+    }
+  }, [fetchPostMortems])
+
+  const getRelatedPostMortems = useCallback(async (pmId) => {
+    try {
+      return await nocApi.postMortem.getRelated(pmId)
+    } catch (err) {
+      console.error('Error fetching related post-mortems:', err)
+      throw err
+    }
+  }, [])
+
   return {
     // Sites
     sites,
@@ -475,6 +509,9 @@ export const useNOCData = () => {
     reviewPostMortem,
     getPostMortemReport,
     deletePostMortem,
+    linkPostMortems,
+    unlinkPostMortems,
+    getRelatedPostMortems,
 
     // Polling
     pollingStatus,

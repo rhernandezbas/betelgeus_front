@@ -124,7 +124,39 @@ export const postMortemApi = {
   getReport: (pmId) => nocFetch(`/post-mortems/${pmId}/report`),
 
   // Eliminar post-mortem
-  delete: (pmId) => nocFetch(`/post-mortems/${pmId}`, { method: 'DELETE' })
+  delete: (pmId) => nocFetch(`/post-mortems/${pmId}`, { method: 'DELETE' }),
+
+  // ========== RELACIONES ENTRE POST-MORTEMS ==========
+
+  // Vincular incidentes (parent-child)
+  linkIncidents: (parentId, childId, data = {}) => {
+    const params = new URLSearchParams({
+      relationship_type: data.relationship_type || 'related_root_cause',
+      ...(data.description && { description: data.description }),
+      ...(data.linked_by && { linked_by: data.linked_by })
+    })
+    return nocFetch(`/post-mortems/${parentId}/link/${childId}?${params}`, {
+      method: 'POST'
+    })
+  },
+
+  // Desvincular incidentes
+  unlinkIncidents: (parentId, childId) => nocFetch(
+    `/post-mortems/${parentId}/unlink/${childId}`,
+    { method: 'DELETE' }
+  ),
+
+  // Obtener incidentes relacionados
+  getRelated: (pmId) => nocFetch(`/post-mortems/${pmId}/related`),
+
+  // Listar solo post-mortems primarios (para dashboard)
+  getPrimary: (params = {}) => {
+    const queryParams = new URLSearchParams()
+    if (params.status) queryParams.append('status', params.status)
+    if (params.limit) queryParams.append('limit', params.limit)
+    const query = queryParams.toString()
+    return nocFetch(`/post-mortems/primary${query ? `?${query}` : ''}`)
+  }
 }
 
 // ==================== POLLING ====================
