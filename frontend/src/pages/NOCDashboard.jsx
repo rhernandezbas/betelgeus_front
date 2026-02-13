@@ -260,11 +260,42 @@ export default function NOCDashboard() {
       // Cambiar a la pestaña de post-mortems
       setActiveTab('postmortems')
     } catch (error) {
-      toast({
-        title: 'Error al Crear Post-Mortem',
-        description: error.message,
-        variant: 'destructive'
-      })
+      // Check if error is about existing post-mortem
+      if (error.message?.includes('Ya existe un post-mortem')) {
+        // Extract PM ID from error message if present
+        const idMatch = error.message.match(/ID: (\d+)/)
+        const existingPmId = idMatch ? parseInt(idMatch[1]) : null
+
+        toast({
+          title: '⚠️ Post-Mortem ya existe',
+          description: existingPmId
+            ? `Ya existe un post-mortem para este evento. Haz clic en "Editar" para modificarlo.`
+            : error.message,
+          variant: 'default',
+          action: existingPmId ? (
+            <Button
+              size="sm"
+              onClick={() => {
+                const existingPm = postMortems.find(pm => pm.id === existingPmId)
+                if (existingPm) {
+                  handleEditPostMortem(existingPm)
+                } else {
+                  // If not in current list, switch to postmortems tab
+                  setActiveTab('postmortems')
+                }
+              }}
+            >
+              Ver Post-Mortem
+            </Button>
+          ) : undefined
+        })
+      } else {
+        toast({
+          title: 'Error al Crear Post-Mortem',
+          description: error.message,
+          variant: 'destructive'
+        })
+      }
     }
   }
 
