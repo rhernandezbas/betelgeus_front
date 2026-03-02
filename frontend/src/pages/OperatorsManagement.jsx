@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,7 @@ export default function OperatorsManagement() {
   const [resetCountersLoading, setResetCountersLoading] = useState(false)
   const { toast } = useToast()
 
-  const fetchOperators = async () => {
+  const fetchOperators = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getOperators()
@@ -46,7 +46,7 @@ export default function OperatorsManagement() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   const handleResetCounters = async () => {
     setResetCountersLoading(true)
@@ -78,7 +78,7 @@ export default function OperatorsManagement() {
 
   useEffect(() => {
     fetchOperators()
-  }, [])
+  }, [fetchOperators])
 
   // Config Dialog Handlers
   const handleOpenConfig = (operator) => {

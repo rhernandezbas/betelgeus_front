@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
@@ -22,7 +22,7 @@ export default function SchedulesEditable() {
     { value: 6, label: 'Domingo' }
   ]
 
-  const fetchOperators = async () => {
+  const fetchOperators = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getOperators()
@@ -36,11 +36,11 @@ export default function SchedulesEditable() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     fetchOperators()
-  }, [])
+  }, [fetchOperators])
 
   const handleAddSchedule = (personId, scheduleType = 'work') => {
     setNewSchedule({

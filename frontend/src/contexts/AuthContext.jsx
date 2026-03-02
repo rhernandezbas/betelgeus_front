@@ -11,7 +11,6 @@ const AUTO_RENEW_THRESHOLD = 15 * 60 * 1000 // Auto-renovar si quedan menos de 1
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => getSession())
   const [isAuthenticated, setIsAuthenticated] = useState(() => isSessionValid())
-  const [sessionCheckInterval, setSessionCheckInterval] = useState(null)
   const navigate = useNavigate()
   const { toast } = useToast()
 
@@ -99,16 +98,14 @@ export function AuthProvider({ children }) {
     if (isAuthenticated) {
       checkSession() // Verificar inmediatamente
       const interval = setInterval(checkSession, 60000)
-      setSessionCheckInterval(interval)
 
       return () => {
         clearInterval(interval)
-        setSessionCheckInterval(null)
       }
     }
   }, [isAuthenticated, logout, toast])
 
-  // Verificar sesión al montar el componente
+  // Verificar sesión al montar el componente (solo se ejecuta una vez al montar)
   useEffect(() => {
     const currentUser = getSession()
     if (currentUser) {
@@ -118,7 +115,8 @@ export function AuthProvider({ children }) {
       // Si pensábamos que estábamos autenticados pero la sesión expiró
       logout()
     }
-  }, []) // Solo al montar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const value = {
     user,
@@ -131,7 +129,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-// Hook personalizado para usar el contexto
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {

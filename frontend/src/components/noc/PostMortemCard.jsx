@@ -12,8 +12,7 @@ import {
   Trash2,
   AlertTriangle,
   GitBranch,
-  Link2,
-  Unlink
+  Link2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

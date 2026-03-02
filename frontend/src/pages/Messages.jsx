@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { messagesApi } from '@/lib/api'
@@ -13,7 +13,7 @@ export default function Messages() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     try {
       setLoading(true)
       const response = await messagesApi.getCurrentMessages()
@@ -27,11 +27,11 @@ export default function Messages() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     fetchMessages()
-  }, [])
+  }, [fetchMessages])
 
   const handleEdit = (messageKey, content) => {
     setEditingMessage(messageKey)
@@ -39,7 +39,7 @@ export default function Messages() {
     setShowPreview(false)
   }
 
-  const handleSave = async (messageKey) => {
+  const handleSave = async (_messageKey) => {
     toast({
       title: 'Información',
       description: 'Los mensajes se actualizarán en una próxima versión. Por ahora puedes ver y copiar los textos.',
@@ -94,7 +94,7 @@ export default function Messages() {
           <p>• Los mensajes mostrados son los que actualmente envía el sistema</p>
           <p>• Puedes copiar los textos para usarlos como referencia</p>
           <p>• Las variables entre llaves {'{}'} se reemplazan automáticamente con datos reales</p>
-          <p>• Ejemplo: {'{operator_name}'} se reemplaza por "Gabriel Romero"</p>
+          <p>• Ejemplo: {'{operator_name}'} se reemplaza por &quot;Gabriel Romero&quot;</p>
         </CardContent>
       </Card>
 

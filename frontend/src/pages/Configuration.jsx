@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
@@ -11,12 +11,12 @@ export default function Configuration() {
   const [editingConfig, setEditingConfig] = useState({})
   const { toast } = useToast()
 
-  const fetchConfigs = async () => {
+  const fetchConfigs = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getSystemConfig()
       setConfigs(response.data.configs)
-      
+
       const editing = {}
       response.data.configs.forEach(config => {
         editing[config.key] = config.value
@@ -31,11 +31,11 @@ export default function Configuration() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     fetchConfigs()
-  }, [])
+  }, [fetchConfigs])
 
   const handleSaveConfig = async (key, valueType) => {
     try {

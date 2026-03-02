@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi, systemApi } from '@/lib/api'
@@ -22,7 +22,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true)
       const [statsRes, statusRes] = await Promise.all([
@@ -40,13 +40,13 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     fetchData()
     const interval = setInterval(fetchData, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchData])
 
   const handleSystemToggle = async () => {
     try {

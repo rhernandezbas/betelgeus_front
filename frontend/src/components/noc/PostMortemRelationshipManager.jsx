@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -27,11 +26,7 @@ export default function PostMortemRelationshipManager({
   const currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
   const linkedBy = currentUser?.username || 'admin'
 
-  useEffect(() => {
-    loadRelated()
-  }, [postMortem.id])
-
-  const loadRelated = async () => {
+  const loadRelated = useCallback(async () => {
     try {
       setLoading(true)
       const data = await getRelated(postMortem.id)
@@ -45,7 +40,11 @@ export default function PostMortemRelationshipManager({
     } finally {
       setLoading(false)
     }
-  }
+  }, [getRelated, postMortem.id, toast])
+
+  useEffect(() => {
+    loadRelated()
+  }, [loadRelated])
 
   const handleLink = async (parentId, childId) => {
     try {

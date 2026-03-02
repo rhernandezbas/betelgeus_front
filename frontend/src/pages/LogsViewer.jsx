@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,7 @@ export default function LogsViewer() {
   const [autoRefresh, setAutoRefresh] = useState(false)
   const { toast } = useToast()
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true)
       const response = await logsApi.getLogs(filters)
@@ -34,16 +34,16 @@ export default function LogsViewer() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, toast])
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await logsApi.getStats({ hours: filters.hours })
       setStats(response.data.stats)
     } catch (error) {
       console.error('Error loading stats:', error)
     }
-  }
+  }, [filters.hours])
 
   const handleClearLogs = async () => {
     if (!confirm('¿Estás seguro de eliminar todos los logs? Esta acción no se puede deshacer.')) {
@@ -88,7 +88,7 @@ export default function LogsViewer() {
   useEffect(() => {
     fetchLogs()
     fetchStats()
-  }, [])
+  }, [fetchLogs, fetchStats])
 
   useEffect(() => {
     if (!autoRefresh) return
@@ -99,7 +99,7 @@ export default function LogsViewer() {
     }, 5000)
 
     return () => clearInterval(interval)
-  }, [autoRefresh, filters])
+  }, [autoRefresh, fetchLogs, fetchStats])
 
   const getLevelIcon = (level) => {
     switch (level) {

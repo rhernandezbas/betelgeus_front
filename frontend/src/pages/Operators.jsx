@@ -1,26 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { 
-  UserCheck, 
-  UserX, 
-  Play, 
+import {
+  UserCheck,
+  UserX,
+  Play,
   Pause,
   RefreshCw,
   Bell,
-  BellOff,
-  Edit
+  BellOff
 } from 'lucide-react'
 
 export default function Operators() {
   const [operators, setOperators] = useState([])
   const [loading, setLoading] = useState(true)
-  const [selectedOperator, setSelectedOperator] = useState(null)
   const { toast } = useToast()
 
-  const fetchOperators = async () => {
+  const fetchOperators = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getOperators()
@@ -34,11 +32,11 @@ export default function Operators() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     fetchOperators()
-  }, [])
+  }, [fetchOperators])
 
   const handlePauseOperator = async (personId, name) => {
     const reason = prompt(`¿Por qué deseas pausar a ${name}?`)

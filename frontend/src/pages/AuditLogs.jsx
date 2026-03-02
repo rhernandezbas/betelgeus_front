@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
@@ -12,7 +12,7 @@ export default function AuditLogs() {
   const [limit, setLimit] = useState(50)
   const { toast } = useToast()
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setLoading(true)
       const params = { limit }
@@ -30,11 +30,11 @@ export default function AuditLogs() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterAction, limit, toast])
 
   useEffect(() => {
     fetchLogs()
-  }, [filterAction, limit])
+  }, [fetchLogs])
 
   const getActionBadgeColor = (action) => {
     const colors = {

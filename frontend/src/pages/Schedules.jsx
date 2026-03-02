@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
@@ -10,7 +10,7 @@ export default function Schedules() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const fetchOperators = async () => {
+  const fetchOperators = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getOperators()
@@ -24,11 +24,11 @@ export default function Schedules() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     fetchOperators()
-  }, [])
+  }, [fetchOperators])
 
   const getDayName = (day) => {
     const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, Calendar, TrendingUp, Clock, AlertCircle, CheckCircle, Filter, Download, Search, Edit2, Trash2, AlertTriangle } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
+import { RefreshCw, TrendingUp, Clock, AlertCircle, CheckCircle, Filter, Download, Search, Edit2, Trash2, AlertTriangle } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 export default function Metrics() {
   const [loading, setLoading] = useState(true)
@@ -30,7 +30,7 @@ export default function Metrics() {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
-  const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getMetrics()
@@ -44,9 +44,9 @@ export default function Metrics() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       // Obtener tickets desde la base de datos
       const response = await adminApi.getIncidents()
@@ -104,7 +104,7 @@ export default function Metrics() {
         variant: 'destructive'
       })
     }
-  }
+  }, [toast])
 
   const handleToggleThreshold = (ticketId, currentStatus, ticketInfo = null) => {
     // Abrir modal de confirmación
@@ -204,7 +204,7 @@ export default function Metrics() {
   useEffect(() => {
     fetchMetrics()
     fetchTickets()
-  }, [])
+  }, [fetchMetrics, fetchTickets])
 
   // Aplicar filtros automáticamente cuando se cargan/actualizan los tickets
   // Esto asegura que:
@@ -992,12 +992,12 @@ export default function Metrics() {
               {thresholdModal.currentStatus ? (
                 <div className="text-sm text-gray-600">
                   <p className="font-medium text-gray-800 mb-2">¿Estás seguro que deseas desmarcar este ticket como vencido?</p>
-                  <p>Al confirmar, el indicador de <span className="font-semibold text-green-700">"Excede tiempo"</span> se establecerá en <span className="font-semibold text-green-700">NO</span> y el ticket dejará de aparecer en el filtro de vencidos.</p>
+                  <p>Al confirmar, el indicador de <span className="font-semibold text-green-700">&quot;Excede tiempo&quot;</span> se establecerá en <span className="font-semibold text-green-700">NO</span> y el ticket dejará de aparecer en el filtro de vencidos.</p>
                 </div>
               ) : (
                 <div className="text-sm text-gray-600">
                   <p className="font-medium text-gray-800 mb-2">¿Estás seguro que deseas marcar este ticket como vencido?</p>
-                  <p>Al confirmar, el indicador de <span className="font-semibold text-yellow-700">"Excede tiempo"</span> se establecerá en <span className="font-semibold text-yellow-700">SÍ</span> y se creará la métrica correspondiente si no existe.</p>
+                  <p>Al confirmar, el indicador de <span className="font-semibold text-yellow-700">&quot;Excede tiempo&quot;</span> se establecerá en <span className="font-semibold text-yellow-700">SÍ</span> y se creará la métrica correspondiente si no existe.</p>
                 </div>
               )}
             </DialogDescription>
