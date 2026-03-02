@@ -21,7 +21,7 @@ npm install
 ```
 
 ### Development
-```bash
+```bash2
 # Start dev server (port 3000, proxies /api to localhost:5605)
 npm run dev
 

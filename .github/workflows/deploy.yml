@@ -8,161 +8,83 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup VPS and Deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 190.7.234.37
-          username: root
-          password: YmUeXJYrO3
-          port: 22
-          command_timeout: 30m
-          script: |
-            echo "🔧 Verificando dependencias..."
-
-            # Verificar Docker
-            if ! command -v docker &> /dev/null; then
-              echo "📦 Instalando Docker..."
-              curl -fsSL https://get.docker.com -o get-docker.sh
-              sh get-docker.sh
-              rm get-docker.sh
-            else
-              echo "✅ Docker ya está instalado"
-            fi
-
-            # Instalar Git si no existe
-            if ! command -v git &> /dev/null; then
-              echo "📦 Instalando Git..."
-              apt update && apt install -y git
-            else
-              echo "✅ Git ya está instalado"
-            fi
-
-            # Verificar versiones
-            echo "📋 Versiones instaladas:"
-            docker --version
-            docker compose version
-            git --version
-
-            # Configurar directorio del proyecto
-            PROJECT_DIR="/opt/betelgeuse"
-
-            # Crear directorio si no existe
-            mkdir -p $PROJECT_DIR
-            cd $PROJECT_DIR
-
-            # Si el repo no existe, clonarlo
-            if [ ! -d ".git" ]; then
-              echo "📦 Clonando repositorio..."
-              git clone https://github.com/rhernandezbas/betelgeus_front.git .
-            else
-              echo "🔄 Actualizando repositorio..."
-              git fetch origin
-              git reset --hard origin/main
-              git pull origin main
-            fi
-
-            # Crear archivo .env si no existe
-            if [ ! -f ".env" ]; then
-              echo "📝 Creando archivo .env..."
-              cp .env.example .env
-            fi
-
-            # Detener contenedores existentes
-            echo "🛑 Deteniendo contenedores..."
-            docker compose down -v 2>/dev/null || true
-
-            # Limpiar caché de Docker completamente
-            echo "🧹 Limpiando caché de Docker..."
-            docker system prune -af --volumes
-
-            # Construir y levantar con los nuevos cambios
-            echo "🏗️  Construyendo nueva imagen..."
-            if ! docker compose build --no-cache --pull; then
-              echo "❌ Error en el build"
-              docker compose logs
-              exit 1
-            fi
-
-            echo "🚀 Iniciando contenedores..."
-            if ! docker compose up -d; then
-              echo "❌ Error al iniciar contenedores"
-              docker compose logs
-              exit 1
-            fi
-
-            # Esperar a que el contenedor esté listo
-            echo "⏳ Esperando que el servicio esté listo..."
-            sleep 20
-
-            # Mostrar estado detallado
-            echo "📊 Estado de contenedores:"
-            docker compose ps -a
-
-            # Mostrar logs completos si hay error
-            if ! docker compose ps | grep -q "Up"; then
-              echo "❌ Los contenedores no están corriendo. Logs completos:"
-              docker compose logs
-              exit 1
-            fi
-
-            # Mostrar logs recientes
-            echo "📋 Últimos logs:"
-            docker compose logs --tail=50
-
-            echo "✅ Despliegue completado exitosamente"
-
-      - name: Verify deployment
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 190.7.234.37
-          username: root
-          password: YmUeXJYrO3
-          port: 22
-          script: |
-            cd /opt/betelgeuse
-
-            # Verificar que los contenedores están corriendo
-            echo "📊 Estado detallado de contenedores:"
-            docker compose ps -a
-
-            if docker compose ps | grep -q "Up"; then
-              echo "✅ Contenedores corriendo correctamente"
-              echo ""
-              echo "🌐 Frontend disponible en: http://190.7.234.37:7842"
-              echo ""
-              echo "📋 Logs del frontend:"
-              docker compose logs --tail=20 frontend
-
-              # Test de conectividad
-              echo ""
-              echo "🔍 Probando conectividad..."
-              if curl -f http://localhost:7842 > /dev/null 2>&1; then
-                echo "✅ Frontend responde correctamente"
-              else
-                echo "⚠️  Frontend no responde aún"
-              fi
-              exit 0
-            else
-              echo "❌ Error: Contenedores no están corriendo"
-              echo ""
-              echo "📋 Logs completos:"
-              docker compose logs
-              echo ""
-              echo "🔍 Inspeccionando contenedor:"
-              docker compose ps -a
-              exit 1
-            fi
-
-      - name: Health check
+      - name: Deploy
         run: |
-          echo "🏥 Verificando salud del servicio..."
-          sleep 10
-          # Opcional: agregar curl para verificar endpoint
-          # curl -f http://190.7.234.37:7842 || exit 1
-          echo "✅ Health check completado"
+          PROJECT_DIR="/opt/betelgeuse"
+          mkdir -p $PROJECT_DIR
+          cd $PROJECT_DIR
+
+          # Actualizar código
+          if [ ! -d ".git" ]; then
+            echo "📦 Clonando repositorio..."
+            git clone https://github.com/rhernandezbas/betelgeus_front.git .
+          else
+            echo "🔄 Actualizando repositorio..."
+            git fetch origin
+            git reset --hard origin/main
+          fi
+
+          # Crear archivo .env si no existe
+          if [ ! -f ".env" ]; then
+            echo "📝 Creando archivo .env..."
+            cp .env.example .env
+          fi
+
+          # Detener contenedores existentes
+          echo "🛑 Deteniendo contenedores..."
+          docker compose down -v 2>&1 || true
+
+          # Limpiar contenedores huérfanos
+          docker ps -a | grep betelgeuse-frontend | awk '{print $1}' | xargs -r docker rm -f 2>&1 || true
+          docker volume prune -f 2>&1 || true
+          docker system prune -af 2>&1
+
+          # Build y deploy
+          echo "🏗️  Construyendo nueva imagen..."
+          docker compose build --no-cache --pull 2>&1
+
+          if [ $? -ne 0 ]; then
+            echo "❌ Error en el build"
+            exit 1
+          fi
+
+          echo "🚀 Iniciando contenedores..."
+          docker compose up -d 2>&1
+
+          if [ $? -ne 0 ]; then
+            echo "❌ Error al iniciar contenedores"
+            docker compose logs
+            exit 1
+          fi
+
+          # Verificar
+          echo "⏳ Esperando que el servicio esté listo..."
+          sleep 20
+
+          echo "📊 Estado de contenedores:"
+          docker compose ps -a
+
+          echo "📋 Últimos logs del frontend:"
+          docker compose logs --tail=50 frontend
+
+          if ! docker compose ps | grep -q "Up"; then
+            echo "❌ Contenedor no está corriendo"
+            docker compose logs
+            exit 1
+          fi
+
+          # Test de conectividad
+          echo "🔍 Probando conectividad..."
+          if curl -f http://localhost:7842 > /dev/null 2>&1; then
+            echo "✅ Frontend responde correctamente en http://190.7.234.37:7842"
+          else
+            echo "⚠️  Frontend no responde aún (puede necesitar más tiempo)"
+          fi
+
+          echo "✅ Despliegue completado exitosamente"

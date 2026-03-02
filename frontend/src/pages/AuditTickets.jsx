@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, FileSearch, CheckCircle, AlertCircle, User, Clock, Trash2, XCircle, Check } from 'lucide-react'
+import { RefreshCw, FileSearch, CheckCircle, User, Clock, Trash2, XCircle, Check } from 'lucide-react'
 
 export default function AuditTickets() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  const fetchAuditTickets = async () => {
+  const fetchAuditTickets = useCallback(async () => {
     try {
       setLoading(true)
       const response = await adminApi.getAuditTickets()
@@ -24,7 +24,7 @@ export default function AuditTickets() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   const handleApprove = async (ticketId) => {
     try {
@@ -87,7 +87,7 @@ export default function AuditTickets() {
     // Actualizar cada 30 segundos
     const interval = setInterval(fetchAuditTickets, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [fetchAuditTickets])
 
   if (loading) {
     return (
@@ -202,6 +202,11 @@ export default function AuditTickets() {
                         <span className="font-mono text-sm font-semibold text-gray-700">
                           Ticket #{ticket.ticket_id}
                         </span>
+                        {ticket.numero_ticket_gr && (
+                          <span className="text-xs text-muted-foreground">
+                            GR #{ticket.numero_ticket_gr}
+                          </span>
+                        )}
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           ticket.priority === 'Alta' ? 'bg-red-100 text-red-800' :
                           ticket.priority === 'Media' ? 'bg-yellow-100 text-yellow-800' :
@@ -212,6 +217,18 @@ export default function AuditTickets() {
                         {ticket.exceeded_threshold && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
                             ⚠️ Vencido
+                          </span>
+                        )}
+                        {ticket.recreado > 0 && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            <RefreshCw className="h-3 w-3 mr-1" />
+                            Reapertura x{ticket.recreado}
+                          </span>
+                        )}
+                        {ticket.pre_alert_sent_at && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pre-alerta enviada
                           </span>
                         )}
                         {/* Estado de auditoría */}

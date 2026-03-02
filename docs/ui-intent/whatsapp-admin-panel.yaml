@@ -1,0 +1,188 @@
+structure:
+  components:
+    - id: "whatsapp-page"
+      type: container
+      layout:
+        anchor: fill
+        padding: "24px"
+      children:
+        - "page-header"
+        - "health-status"
+        - "operators-config-section"
+        - "send-message-section"
+
+    - id: "page-header"
+      type: container
+      layout:
+        anchor: top
+        width: "100%"
+        padding: "0 0 16px 0"
+      children:
+        - "page-title"
+        - "health-badge"
+
+    - id: "page-title"
+      type: text
+      content: "Administración de WhatsApp"
+      layout:
+        anchor: left
+
+    - id: "health-badge"
+      type: container
+      layout:
+        anchor: right
+
+    - id: "health-status"
+      type: container
+      layout:
+        anchor: top
+        width: "100%"
+        padding: "16px"
+      children:
+        - "health-indicator"
+        - "health-details"
+
+    - id: "health-indicator"
+      type: container
+      layout:
+        anchor: left
+      attributes:
+        variant: "status"
+
+    - id: "health-details"
+      type: text
+      layout:
+        anchor: right
+
+    - id: "operators-config-section"
+      type: container
+      layout:
+        anchor: top
+        width: "100%"
+        padding: "16px 0"
+      children:
+        - "operators-config-title"
+        - "operators-config-table"
+
+    - id: "operators-config-title"
+      type: text
+      content: "Configuración de Operadores"
+      layout:
+        anchor: top
+
+    - id: "operators-config-table"
+      type: container
+      layout:
+        anchor: fill
+        width: "100%"
+      attributes:
+        columns:
+          - "Operador"
+          - "Person ID"
+          - "Número WhatsApp"
+          - "Notificaciones"
+          - "Estado"
+          - "Acciones"
+
+    - id: "send-message-section"
+      type: container
+      layout:
+        anchor: fill
+        width: "100%"
+        padding: "16px 0"
+      children:
+        - "send-tabs"
+
+    - id: "send-tabs"
+      type: container
+      layout:
+        anchor: fill
+        width: "100%"
+      attributes:
+        tabs:
+          - "Texto"
+          - "Alerta Vencidos"
+          - "Resumen Turno"
+          - "Asignación"
+          - "Personalizado"
+          - "Masivo"
+
+semantics:
+  whatsapp-page:
+    role: "main_view"
+    label: "Panel de administración de WhatsApp"
+    description: "Vista para enviar mensajes WhatsApp y verificar configuración de operadores"
+  health-badge:
+    role: "status_indicator"
+    label: "Estado del servicio WhatsApp"
+    ariaLabel: "Indicador de conexión con Evolution API"
+  operators-config-table:
+    role: "data_table"
+    label: "Configuración WhatsApp de operadores"
+    ariaLabel: "Tabla con estado de configuración WhatsApp de cada operador"
+  send-tabs:
+    role: "tab_navigation"
+    label: "Tipos de mensaje"
+    description: "Tabs para seleccionar el tipo de mensaje a enviar"
+
+state_model:
+  states: ["idle", "loading_health", "loading_operators", "sending", "send_success", "send_error"]
+  currentState: "idle"
+  transitions:
+    - from: "idle"
+      to: "loading_health"
+      on: "page_mount"
+    - from: "idle"
+      to: "sending"
+      on: "send_click"
+    - from: "sending"
+      to: "send_success"
+      on: "api_success"
+    - from: "sending"
+      to: "send_error"
+      on: "api_error"
+    - from: "send_success"
+      to: "idle"
+      on: "toast_dismiss"
+    - from: "send_error"
+      to: "idle"
+      on: "toast_dismiss"
+
+motion:
+  sending:
+    send-tabs:
+      opacity: 0.7
+  send_success:
+    send-tabs:
+      opacity: 1
+      animation: "fade-in"
+
+constraints:
+  - id: "c1"
+    target: "send-tabs"
+    type: visibility
+    condition: "health_status == connected"
+  - id: "c2"
+    target: "send-message-section"
+    type: relationship
+    condition: "admin_role_required"
+    value: "Only admin users can send messages"
+  - id: "c3"
+    target: "send-tabs"
+    type: size
+    condition: "bulk_tab_selected"
+    value: "max_recipients: 50"
+
+annotations:
+  - id: "a1"
+    target: "health-badge"
+    type: rationale
+    content: "Health check se ejecuta al cargar la página y cada 60 segundos para monitoreo continuo"
+  - id: "a2"
+    target: "send-tabs"
+    type: note
+    content: "Cada tab tiene su propio formulario con campos específicos según el tipo de mensaje"
+  - id: "a3"
+    target: "operators-config-table"
+    type: note
+    content: "Botón Validar en cada fila permite verificar que el operador tiene configuración correcta"

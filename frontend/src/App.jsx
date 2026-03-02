@@ -8,6 +8,7 @@ import UnifiedLogs from './pages/UnifiedLogs'
 import ReassignmentHistory from './pages/ReassignmentHistory'
 import AuditTickets from './pages/AuditTickets'
 import Messages from './pages/Messages'
+import WhatsAppAdmin from './pages/WhatsAppAdmin'
 import Metrics from './pages/Metrics'
 import Users from './pages/Users'
 import OperatorView from './pages/OperatorView'
@@ -39,6 +40,7 @@ function App() {
           <Route path="operators-management" element={<OperatorsManagement />} />
           <Route path="configuration" element={<Configuration />} />
           <Route path="messages" element={<Messages />} />
+          <Route path="whatsapp" element={<WhatsAppAdmin />} />
           <Route path="metrics" element={<Metrics />} />
           <Route path="logs" element={<UnifiedLogs />} />
           <Route path="users" element={<Users />} />

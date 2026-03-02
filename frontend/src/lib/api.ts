@@ -126,11 +126,15 @@ export interface AuditLog {
 export interface ReassignmentHistory {
   id: number;
   ticket_id: number;
-  from_operator_id: number;
-  to_operator_id: number;
+  from_operator_id: number | null;
+  from_operator_name: string | null;
+  to_operator_id: number | null;
+  to_operator_name: string | null;
   reason: string;
-  reassigned_at: string;
-  reassigned_by: string;
+  reassignment_type: 'manual' | 'auto_unassign' | 'end_of_shift' | 'splynx_sync';
+  notification_sent: boolean;
+  created_by: string;
+  created_at: string;
 }
 
 // Metrics Types
@@ -173,6 +177,79 @@ export interface DeviceAnalysisResult {
 export interface DeviceAnalysisFeedback {
   helpful: boolean;
   comment?: string;
+}
+
+// WhatsApp Types
+export interface WhatsAppHealthStatus {
+  status: string;
+  evolution_api: boolean;
+  instance: string;
+}
+
+export interface WhatsAppOperatorConfig {
+  person_id: number;
+  name: string;
+  whatsapp_number: string | null;
+  notifications_enabled: boolean;
+  is_valid: boolean;
+}
+
+export interface WhatsAppSendTextRequest {
+  phone_number: string;
+  message: string;
+}
+
+export interface WhatsAppOverdueAlertTicket {
+  id: string;
+  subject: string;
+  customer_name: string;
+  response_time: number;
+}
+
+export interface WhatsAppOverdueAlertRequest {
+  person_id: number;
+  tickets_list: WhatsAppOverdueAlertTicket[];
+}
+
+export interface WhatsAppShiftSummaryRequest {
+  person_id: number;
+  tickets_list: WhatsAppOverdueAlertTicket[];
+}
+
+export interface WhatsAppAssignmentRequest {
+  person_id: number;
+  ticket_id: string;
+  subject: string;
+  customer_name: string;
+}
+
+export interface WhatsAppCustomRequest {
+  person_id: number;
+  message: string;
+}
+
+export interface WhatsAppBulkRequest {
+  person_ids: number[];
+  message: string;
+}
+
+export interface WhatsAppSendResponse {
+  success: boolean;
+  message: string;
+  data: {
+    person_id?: number;
+    operator_name?: string;
+    tickets_count?: number;
+    success: boolean;
+  };
+}
+
+// Ticket Extended Fields (for reopen and pre-alert)
+export interface TicketExtendedFields {
+  numero_ticket_gr: number | null;
+  splynx_closed_at: string | null;
+  pre_alert_sent_at: string | null;
+  recreado: number;
 }
 
 // Logs Types
@@ -360,6 +437,38 @@ export const deviceAnalysisApi = {
 
   getApiLogsStats: (params?: Record<string, any>): Promise<AxiosResponse> =>
     api.get('/api/device-analysis/api-logs/stats', { params }),
+};
+
+export const whatsappApi = {
+  // Health
+  healthCheck: (): Promise<AxiosResponse<ApiResponse<WhatsAppHealthStatus>>> =>
+    api.get('/api/whatsapp/health'),
+
+  // Operator Config
+  getOperatorsConfig: (): Promise<AxiosResponse<ApiResponse<{ operators: WhatsAppOperatorConfig[] }>>> =>
+    api.get('/api/whatsapp/operators/config'),
+
+  validateOperator: (personId: number): Promise<AxiosResponse<ApiResponse<WhatsAppOperatorConfig>>> =>
+    api.get(`/api/whatsapp/operators/${personId}/validate`),
+
+  // Send Messages
+  sendText: (data: WhatsAppSendTextRequest): Promise<AxiosResponse<ApiResponse<WhatsAppSendResponse>>> =>
+    api.post('/api/whatsapp/send/text', data),
+
+  sendOverdueAlert: (data: WhatsAppOverdueAlertRequest): Promise<AxiosResponse<ApiResponse<WhatsAppSendResponse>>> =>
+    api.post('/api/whatsapp/send/overdue-alert', data),
+
+  sendShiftSummary: (data: WhatsAppShiftSummaryRequest): Promise<AxiosResponse<ApiResponse<WhatsAppSendResponse>>> =>
+    api.post('/api/whatsapp/send/shift-summary', data),
+
+  sendAssignment: (data: WhatsAppAssignmentRequest): Promise<AxiosResponse<ApiResponse<WhatsAppSendResponse>>> =>
+    api.post('/api/whatsapp/send/assignment', data),
+
+  sendCustom: (data: WhatsAppCustomRequest): Promise<AxiosResponse<ApiResponse<WhatsAppSendResponse>>> =>
+    api.post('/api/whatsapp/send/custom', data),
+
+  sendBulk: (data: WhatsAppBulkRequest): Promise<AxiosResponse<ApiResponse<WhatsAppSendResponse[]>>> =>
+    api.post('/api/whatsapp/send/bulk', data),
 };
 
 export default api;

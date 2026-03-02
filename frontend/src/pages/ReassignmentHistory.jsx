@@ -1,28 +1,54 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, ArrowRightLeft, Filter, Search, User } from 'lucide-react'
+import { RefreshCw, ArrowRightLeft, Filter, Search, User, Check, X } from 'lucide-react'
+
+const getTypeBadge = (type) => {
+  const config = {
+    'splynx_sync': { label: 'Splynx Sync', className: 'bg-blue-100 text-blue-800 border-blue-200' },
+    'manual': { label: 'Manual', className: 'bg-green-100 text-green-800 border-green-200' },
+    'auto_unassign': { label: 'Auto Desasignar', className: 'bg-amber-100 text-amber-800 border-amber-200' },
+    'end_of_shift': { label: 'Fin de Turno', className: 'bg-red-100 text-red-800 border-red-200' },
+  }
+  const c = config[type] || { label: type || 'Desconocido', className: 'bg-gray-100 text-gray-800 border-gray-200' }
+  return <Badge className={c.className}>{c.label}</Badge>
+}
+
+const getNotificationBadge = (sent) => {
+  if (sent) {
+    return (
+      <Badge className="bg-green-100 text-green-800 border-green-200">
+        <Check className="h-3 w-3 mr-1" />
+        Enviada
+      </Badge>
+    )
+  }
+  return (
+    <Badge className="bg-gray-100 text-gray-500 border-gray-200">
+      <X className="h-3 w-3 mr-1" />
+      No enviada
+    </Badge>
+  )
+}
 
 export default function ReassignmentHistory() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterTicketId, setFilterTicketId] = useState('')
-  const [filterOperatorId, setFilterOperatorId] = useState('')
+  const [filterType, setFilterType] = useState('')
   const [limit, setLimit] = useState(100)
   const { toast } = useToast()
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       setLoading(true)
       const params = { limit }
       if (filterTicketId) {
         params.ticket_id = filterTicketId
-      }
-      if (filterOperatorId) {
-        params.operator_id = filterOperatorId
       }
       const response = await adminApi.getReassignmentHistory(params)
       setHistory(response.data.history || [])
@@ -35,11 +61,11 @@ export default function ReassignmentHistory() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [limit, filterTicketId, toast])
 
   useEffect(() => {
     fetchHistory()
-  }, [limit])
+  }, [fetchHistory])
 
   const handleSearch = () => {
     fetchHistory()
@@ -47,29 +73,13 @@ export default function ReassignmentHistory() {
 
   const handleClearFilters = () => {
     setFilterTicketId('')
-    setFilterOperatorId('')
+    setFilterType('')
     setTimeout(() => fetchHistory(), 100)
   }
 
-  const getTypeBadgeColor = (type) => {
-    const colors = {
-      'auto_unassign_after_shift': 'bg-orange-100 text-orange-800',
-      'manual': 'bg-blue-100 text-blue-800',
-      'end_of_shift': 'bg-purple-100 text-purple-800',
-      'system': 'bg-gray-100 text-gray-800',
-    }
-    return colors[type] || 'bg-gray-100 text-gray-800'
-  }
-
-  const getTypeLabel = (type) => {
-    const labels = {
-      'auto_unassign_after_shift': 'Desasignación Automática',
-      'manual': 'Manual',
-      'end_of_shift': 'Fin de Turno',
-      'system': 'Sistema',
-    }
-    return labels[type] || type
-  }
+  const filteredHistory = filterType
+    ? history.filter((item) => item.reassignment_type === filterType)
+    : history
 
   if (loading) {
     return (
@@ -106,6 +116,20 @@ export default function ReassignmentHistory() {
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
+              <label className="text-sm font-medium mb-2 block">Tipo</label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md text-sm"
+              >
+                <option value="">Todos</option>
+                <option value="manual">Manual</option>
+                <option value="splynx_sync">Splynx Sync</option>
+                <option value="auto_unassign">Auto Desasignar</option>
+                <option value="end_of_shift">Fin de Turno</option>
+              </select>
+            </div>
+            <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-2 block">Ticket ID</label>
               <div className="flex gap-2">
                 <Input
@@ -116,19 +140,8 @@ export default function ReassignmentHistory() {
                 />
               </div>
             </div>
-            <div className="flex-1 min-w-[200px]">
-              <label className="text-sm font-medium mb-2 block">Operador ID</label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ej: 123"
-                  value={filterOperatorId}
-                  onChange={(e) => setFilterOperatorId(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                />
-              </div>
-            </div>
             <div className="w-32">
-              <label className="text-sm font-medium mb-2 block">Límite</label>
+              <label className="text-sm font-medium mb-2 block">Limite</label>
               <select
                 value={limit}
                 onChange={(e) => setLimit(Number(e.target.value))}
@@ -153,79 +166,74 @@ export default function ReassignmentHistory() {
         </CardContent>
       </Card>
 
-      {/* History List */}
+      {/* History Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
-            Registros ({history.length})
+            Registros ({filteredHistory.length})
           </CardTitle>
           <CardDescription>
-            Últimas {limit} reasignaciones registradas
+            Ultimas {limit} reasignaciones registradas
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {history.length > 0 ? (
-            <div className="space-y-3">
-              {history.map((item) => (
-                <div key={item.id} className="p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 space-y-2">
-                      {/* Header with type badge and ticket */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getTypeBadgeColor(item.reassignment_type)}`}>
-                          {getTypeLabel(item.reassignment_type)}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-700">
-                          Ticket #{item.ticket_id}
-                        </span>
-                      </div>
-                      
-                      {/* From -> To */}
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-red-50 border border-red-200 rounded">
-                          <User className="h-4 w-4 text-red-600" />
-                          <span className="font-medium text-red-700">
-                            {item.from_operator_name}
-                            {item.from_operator_id && (
-                              <span className="text-xs text-red-500 ml-1">
-                                (ID: {item.from_operator_id})
-                              </span>
-                            )}
-                          </span>
+          {filteredHistory.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left p-3 font-medium">Ticket</th>
+                    <th className="text-left p-3 font-medium">De (Operador)</th>
+                    <th className="text-left p-3 font-medium">A (Operador)</th>
+                    <th className="text-left p-3 font-medium">Tipo</th>
+                    <th className="text-left p-3 font-medium">Razon</th>
+                    <th className="text-left p-3 font-medium">Notificacion</th>
+                    <th className="text-left p-3 font-medium">Creado por</th>
+                    <th className="text-left p-3 font-medium">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistory.map((item) => (
+                    <tr key={item.id} className="border-b hover:bg-muted/30 transition-colors">
+                      <td className="p-3 font-semibold">#{item.ticket_id}</td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-red-500" />
+                          <span>{item.from_operator_name || item.from_operator_id || '-'}</span>
                         </div>
-                        
-                        <ArrowRightLeft className="h-4 w-4 text-gray-400" />
-                        
-                        <div className="flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-200 rounded">
-                          <User className="h-4 w-4 text-green-600" />
-                          <span className="font-medium text-green-700">
-                            {item.to_operator_name}
-                            {item.to_operator_id && (
-                              <span className="text-xs text-green-500 ml-1">
-                                (ID: {item.to_operator_id})
-                              </span>
-                            )}
-                          </span>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-green-500" />
+                          <span>{item.to_operator_name || item.to_operator_id || '-'}</span>
                         </div>
-                      </div>
-                      
-                      {/* Reason */}
-                      {item.reason && (
-                        <p className="text-sm text-gray-600 italic">
-                          💬 {item.reason}
-                        </p>
-                      )}
-                      
-                      {/* Footer with metadata */}
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>👤 {item.created_by || 'Sistema'}</span>
-                        <span>🕐 {new Date(item.created_at).toLocaleString('es-AR')}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="p-3">{getTypeBadge(item.reassignment_type)}</td>
+                      <td className="p-3 max-w-[200px]">
+                        {item.reason ? (
+                          <span className="text-gray-600 truncate block" title={item.reason}>
+                            {item.reason}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="p-3">{getNotificationBadge(item.notification_sent)}</td>
+                      <td className="p-3 text-gray-600">{item.created_by || 'Sistema'}</td>
+                      <td className="p-3 text-gray-500 whitespace-nowrap">
+                        {new Date(item.created_at).toLocaleString('es-AR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground">
@@ -241,11 +249,10 @@ export default function ReassignmentHistory() {
           <CardTitle className="text-blue-900">Sobre el Historial de Reasignaciones</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-blue-800 space-y-2">
-          <p>• 🔄 Registra todos los movimientos de tickets entre operadores</p>
-          <p>• 🤖 Incluye reasignaciones automáticas por fin de turno</p>
-          <p>• 📱 Los operadores reciben notificaciones de WhatsApp cuando sus tickets son reasignados</p>
-          <p>• 🔍 Puedes filtrar por ticket específico o por operador</p>
-          <p>• 📊 Útil para auditoría y análisis de flujo de trabajo</p>
+          <p>Registra todos los movimientos de tickets entre operadores</p>
+          <p>Incluye reasignaciones automaticas por fin de turno y sincronizacion con Splynx</p>
+          <p>Los operadores reciben notificaciones de WhatsApp cuando sus tickets son reasignados</p>
+          <p>Puedes filtrar por ticket especifico o por tipo de reasignacion</p>
         </CardContent>
       </Card>
     </div>

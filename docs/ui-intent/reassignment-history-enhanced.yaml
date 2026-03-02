@@ -1,0 +1,136 @@
+structure:
+  components:
+    - id: "reassignment-page"
+      type: container
+      layout:
+        anchor: fill
+        padding: "24px"
+      children:
+        - "page-header"
+        - "filters-bar"
+        - "reassignment-table"
+
+    - id: "page-header"
+      type: container
+      layout:
+        anchor: top
+        width: "100%"
+      children:
+        - "page-title"
+
+    - id: "page-title"
+      type: text
+      content: "Historial de Reasignaciones"
+      layout:
+        anchor: left
+
+    - id: "filters-bar"
+      type: container
+      layout:
+        anchor: top
+        width: "100%"
+        padding: "16px 0"
+      children:
+        - "filter-type"
+        - "filter-ticket"
+        - "filter-date"
+
+    - id: "filter-type"
+      type: select
+      layout:
+        anchor: left
+        width: "200px"
+      attributes:
+        options:
+          - "Todos"
+          - "Manual"
+          - "Splynx Sync"
+          - "Auto Desasignar"
+          - "Fin de Turno"
+
+    - id: "filter-ticket"
+      type: input
+      layout:
+        anchor: left
+        width: "150px"
+      attributes:
+        placeholder: "Ticket ID"
+
+    - id: "filter-date"
+      type: input
+      layout:
+        anchor: left
+        width: "200px"
+      attributes:
+        type: "date"
+
+    - id: "reassignment-table"
+      type: container
+      layout:
+        anchor: fill
+        width: "100%"
+      attributes:
+        columns:
+          - "Ticket"
+          - "De (Operador)"
+          - "A (Operador)"
+          - "Tipo"
+          - "Razón"
+          - "Notificación"
+          - "Creado por"
+          - "Fecha"
+
+semantics:
+  reassignment-page:
+    role: "main_view"
+    label: "Historial de reasignaciones de tickets"
+  filters-bar:
+    role: "filter_controls"
+    label: "Filtros de búsqueda"
+    ariaLabel: "Controles para filtrar el historial de reasignaciones"
+  reassignment-table:
+    role: "data_table"
+    label: "Tabla de reasignaciones"
+    ariaLabel: "Historial completo de reasignaciones con tipo, operadores y estado de notificación"
+  filter-type:
+    role: "filter"
+    label: "Filtrar por tipo de reasignación"
+    description: "Tipos: manual, splynx_sync, auto_unassign, end_of_shift"
+
+state_model:
+  states: ["loading", "loaded", "filtering", "empty"]
+  currentState: "loading"
+  transitions:
+    - from: "loading"
+      to: "loaded"
+      on: "data_received"
+    - from: "loading"
+      to: "empty"
+      on: "no_data"
+    - from: "loaded"
+      to: "filtering"
+      on: "filter_change"
+    - from: "filtering"
+      to: "loaded"
+      on: "filter_applied"
+
+constraints:
+  - id: "c1"
+    target: "reassignment-table"
+    type: visibility
+    condition: "state != empty"
+  - id: "c2"
+    target: "filter-type"
+    type: relationship
+    condition: "type_badge_colors"
+    value: "splynx_sync=blue, manual=green, auto_unassign=orange, end_of_shift=red"
+
+annotations:
+  - id: "a1"
+    target: "reassignment-table"
+    type: note
+    content: "La columna Tipo usa Badges de color según el tipo de reasignación para identificación visual rápida"
+  - id: "a2"
+    target: "reassignment-table"
+    type: note
+    content: "La columna Notificación muestra check verde si se envió WhatsApp, X gris si no"

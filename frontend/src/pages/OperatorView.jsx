@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
-import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, Bell, BellOff, FileSearch } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts'
+import { RefreshCw, User, Clock, CheckCircle, AlertCircle, TrendingUp, Calendar, FileSearch } from 'lucide-react'
 
 export default function OperatorView() {
   const [loading, setLoading] = useState(true)
@@ -22,7 +21,7 @@ export default function OperatorView() {
   const personId = currentUser.person_id
   const username = currentUser.username
 
-  const fetchOperatorData = async () => {
+  const fetchOperatorData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -110,7 +109,9 @@ export default function OperatorView() {
           audit_notified: ticket.audit_notified,
           audit_requested_at: ticket.audit_requested_at,
           audit_requested_by: ticket.audit_requested_by,
-          recreado: ticket.recreado || 0
+          recreado: ticket.recreado || 0,
+          pre_alert_sent_at: ticket.pre_alert_sent_at || null,
+          numero_ticket_gr: ticket.numero_ticket_gr || null
         }))
         
         setMyTickets(formattedTickets)
@@ -159,7 +160,7 @@ export default function OperatorView() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [personId, username, ticketFilter, toast])
 
   const handleRequestAudit = async () => {
     if (!selectedTicketForAudit) return
@@ -191,7 +192,7 @@ export default function OperatorView() {
     // Actualizar cada 30 segundos
     const interval = setInterval(fetchOperatorData, 30000)
     return () => clearInterval(interval)
-  }, [ticketFilter])
+  }, [fetchOperatorData])
 
   if (loading) {
     return (
@@ -211,9 +212,6 @@ export default function OperatorView() {
       </div>
     )
   }
-
-  const openTickets = myTickets.filter(t => !t.is_closed)
-  const closedTickets = myTickets.filter(t => t.is_closed)
 
   const overdueTickets = myTickets.filter(t => t.exceeded_threshold && !t.is_closed)
 
@@ -506,11 +504,24 @@ export default function OperatorView() {
                           <span className={ticket.recreado > 0 ? "text-red-600 font-semibold" : ""}>
                             {ticket.asunto}
                           </span>
-                          {ticket.recreado > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              🔄 Recreado x{ticket.recreado}
+                          {ticket.numero_ticket_gr && (
+                            <span className="text-sm text-muted-foreground">
+                              Ticket GR #{ticket.numero_ticket_gr}
                             </span>
                           )}
+                          <div className="flex flex-wrap gap-1">
+                            {ticket.recreado > 0 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                🔄 Recreado x{ticket.recreado}
+                              </span>
+                            )}
+                            {ticket.pre_alert_sent_at && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Pre-alerta enviada
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="p-2">
